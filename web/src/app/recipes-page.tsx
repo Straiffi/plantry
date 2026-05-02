@@ -98,25 +98,30 @@ const RecipeSummaryCard = ({ isExpanded, onAddToMenu, onAddToShoppingList, onDel
 
   return (
     <Card className="border-border/60 bg-card/90 shadow-[0_16px_48px_rgba(62,44,32,0.06)]">
-      <button
-        aria-expanded={isExpanded}
-        className="w-full rounded-3xl px-5 py-4 text-left outline-none transition-colors hover:bg-accent/30 focus-visible:ring-2 focus-visible:ring-ring/30 sm:px-6"
-        onClick={() => onToggle(recipe.id)}
-        type="button"
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1 space-y-2">
+      <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-start sm:gap-4 sm:px-6">
+        <button
+          aria-expanded={isExpanded}
+          className="min-w-0 flex-1 rounded-3xl text-left outline-none transition-colors hover:bg-accent/30 focus-visible:ring-2 focus-visible:ring-ring/30"
+          onClick={() => onToggle(recipe.id)}
+          type="button"
+        >
+          <div className="min-w-0 space-y-2">
             <p className="truncate text-lg font-semibold text-foreground">{recipe.name}</p>
-            <p className="line-clamp-1 text-sm text-muted-foreground">{previewText}</p>
+            <p className="hidden line-clamp-1 text-sm text-muted-foreground sm:block">{previewText}</p>
             <p className="text-xs text-muted-foreground">{lastAddedLabel}</p>
           </div>
+        </button>
 
-          <div className="flex shrink-0 items-center gap-3">
+        <div className="flex items-center justify-between gap-2 sm:shrink-0 sm:justify-start sm:gap-3">
+          <div className="flex items-center gap-2 sm:order-2 sm:gap-3">
             <Badge variant="outline">{t('recipes.itemCount', { count: recipe.items.length })}</Badge>
             <ChevronDown className={`size-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
           </div>
+          <Button onClick={() => onAddToMenu(recipe.id)} size="xs" type="button" variant="secondary">
+            <span>{t('recipes.addToMenu')}</span>
+          </Button>
         </div>
-      </button>
+      </div>
 
       {isExpanded && (
         <CardContent className="space-y-4 border-t border-border/60 p-5 sm:p-6">
@@ -131,9 +136,6 @@ const RecipeSummaryCard = ({ isExpanded, onAddToMenu, onAddToShoppingList, onDel
           <div className="flex flex-wrap gap-3">
             <Button asChild variant="outline">
               <Link params={{ recipeId: recipe.id }} to="/recipes/$recipeId">{t('recipes.openRecipe')}</Link>
-            </Button>
-            <Button onClick={() => onAddToMenu(recipe.id)} type="button" variant="secondary">
-              <span>{t('recipes.addToMenu')}</span>
             </Button>
             <Button onClick={() => onAddToShoppingList(recipe.id)} type="button">
               <Send className="size-4" />

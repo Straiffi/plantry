@@ -204,7 +204,7 @@ describe('RecipesPage', () => {
     })
   })
 
-  it('keeps recipe actions hidden until the compact card is expanded', async () => {
+  it('shows the quick Add to menu action on compact recipe cards', async () => {
     const user = userEvent.setup()
 
     apiMock.getRecipes.mockResolvedValue(recipes)
@@ -212,27 +212,28 @@ describe('RecipesPage', () => {
     renderWithProviders(<RecipesPage />)
 
     expect(await screen.findByText('Pasta')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Add to menu' })).not.toBeInTheDocument()
+    expect(screen.getByText('Fresh sauce')).toHaveClass('hidden', 'sm:block')
+    expect(screen.getAllByRole('button', { name: 'Add to menu' })).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: 'Add to shopping list' })).not.toBeInTheDocument()
 
     await user.click(screen.getByText('Pasta'))
 
-    expect(screen.getByRole('button', { name: 'Add to menu' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add to shopping list' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Add to menu' })).toHaveLength(2)
 
     await user.click(screen.getByText('Pasta'))
 
-    expect(screen.queryByRole('button', { name: 'Add to menu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add to shopping list' })).not.toBeInTheDocument()
   })
 
-  it('adds recipes to the menu from the expanded card actions', async () => {
+  it('adds recipes to the menu from the quick card action', async () => {
     const user = userEvent.setup()
 
     apiMock.getRecipes.mockResolvedValue(recipes)
 
     renderWithProviders(<RecipesPage />)
 
-    await user.click(await screen.findByText('Pasta'))
-    await user.click(screen.getByRole('button', { name: 'Add to menu' }))
+    await user.click((await screen.findAllByRole('button', { name: 'Add to menu' }))[0]!)
 
     await waitFor(() => {
       expect(apiMock.addRecipeToMenu).toHaveBeenCalledWith('recipe-1')
