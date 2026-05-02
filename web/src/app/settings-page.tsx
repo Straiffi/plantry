@@ -14,6 +14,10 @@ export const SettingsPage = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { household, householdMembership, user } = useAppContext()
+  const householdMembersQuery = useQuery({
+    queryFn: api.getHouseholdMembers,
+    queryKey: ['household-members'],
+  })
   const inviteCodesQuery = useQuery({
     queryFn: api.getInviteCodes,
     queryKey: ['invite-codes'],
@@ -30,6 +34,10 @@ export const SettingsPage = () => {
     window.location.assign('/login')
   }
 
+  const handleCopyInviteCode = async (code: string) => {
+    await navigator.clipboard.writeText(code)
+  }
+
   return (
     <div className="space-y-8">
       <PageHeader title={t('settings.title')} />
@@ -41,12 +49,41 @@ export const SettingsPage = () => {
               <CardTitle>{t('settings.householdTitle')}</CardTitle>
               <CardDescription>{t('settings.householdDescription')}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-3 text-foreground">
-                <Users className="size-4 text-primary" />
-                <span className="font-medium">{household?.name ?? t('settings.noHousehold')}</span>
+            <CardContent className="space-y-4 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3 text-foreground">
+                  <Users className="size-4 text-primary" />
+                  <span className="font-medium">{household?.name ?? t('settings.noHousehold')}</span>
+                </div>
+                {householdMembership && <Badge variant="outline">{t('settings.roleLabel', { role: householdMembership.role })}</Badge>}
               </div>
-              {householdMembership && <Badge variant="outline">{t('settings.roleLabel', { role: householdMembership.role })}</Badge>}
+
+              <div className="space-y-3 border-t border-border/60 pt-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">{t('settings.membersTitle')}</p>
+                  <p>{t('settings.membersDescription')}</p>
+                </div>
+
+                {householdMembersQuery.error && <p className="text-sm text-destructive">{t('settings.membersError')}</p>}
+                {!householdMembersQuery.isPending && (householdMembersQuery.data ?? []).length === 0 && (
+                  <p className="text-sm text-muted-foreground">{t('settings.membersEmpty')}</p>
+                )}
+
+                {(householdMembersQuery.data ?? []).map((member) => (
+                  <div className="rounded-2xl border border-border/60 bg-background/70 px-4 py-3" key={member.id}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2 text-foreground">
+                          <p className="font-medium">{member.user.name}</p>
+                          {member.userId === user.id && <Badge variant="outline">{t('settings.youLabel')}</Badge>}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{member.user.email}</p>
+                      </div>
+                      <Badge variant="outline">{t('settings.roleLabel', { role: member.role })}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
@@ -88,7 +125,13 @@ export const SettingsPage = () => {
                 <div className="rounded-2xl border border-border/60 bg-background/70 px-4 py-3" key={inviteCode.id}>
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-mono text-sm font-semibold tracking-[0.25em] text-foreground">{inviteCode.code}</p>
-                    <Badge variant="outline">{t('settings.inviteReady')}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{t('settings.inviteReady')}</Badge>
+                      <Button onClick={() => void handleCopyInviteCode(inviteCode.code)} size="xs" type="button" variant="outline">
+                        <Copy className="size-3.5" />
+                        <span>{t('settings.copyInviteCode')}</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}

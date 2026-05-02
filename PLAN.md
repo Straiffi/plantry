@@ -1,4 +1,4 @@
-# Recipe App Plan
+# Plantry Plan
 
 ## Status
 

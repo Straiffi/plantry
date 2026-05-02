@@ -78,6 +78,16 @@ describe('ProductsPage', () => {
     ])
   })
 
+  it('renders a loading skeleton while the catalog is pending', () => {
+    apiMock.getCategories.mockReturnValue(new Promise(() => {}))
+    apiMock.getProducts.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<ProductsPage />)
+
+    expect(screen.getByTestId('products-page-skeleton')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Products' })).toBeInTheDocument()
+  })
+
   it('does not render tag controls in the products UI', async () => {
     renderWithProviders(<ProductsPage />)
 

@@ -5,6 +5,7 @@ import { Plus, Send, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { api, ApiError, type Recipe } from '@/lib/api'
+import { RecipesPageSkeleton } from '@/components/page-skeleton'
 import { PageHeader } from '@/components/page-header'
 import { RecipeItemEditor, type RecipeDraftItem } from '@/components/recipe-item-editor'
 import { Badge } from '@/components/ui/badge'
@@ -125,7 +126,7 @@ export const RecipesPage = () => {
   })
 
   if (recipesQuery.isPending) {
-    return null
+    return <RecipesPageSkeleton title={t('recipes.title')} />
   }
 
   const recipes = recipesQuery.data ?? []

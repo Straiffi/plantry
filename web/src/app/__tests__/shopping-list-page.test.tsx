@@ -62,6 +62,15 @@ describe('ShoppingListPage', () => {
     apiMock.updateShoppingListItem.mockResolvedValue(shoppingListItem)
   })
 
+  it('renders a loading skeleton while the shopping list is pending', () => {
+    apiMock.getShoppingList.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<ShoppingListPage />)
+
+    expect(screen.getByTestId('shopping-list-page-skeleton')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Shopping List' })).toBeInTheDocument()
+  })
+
   it('opens and closes the draft row from the Add item button', async () => {
     const user = userEvent.setup()
 
@@ -197,5 +206,70 @@ describe('ShoppingListPage', () => {
 
     expect(nextInput).toHaveValue('')
     expect(nextInput).toHaveFocus()
+  })
+
+  it('shows the category heading once without repeating it inside the row', async () => {
+    apiMock.getShoppingList.mockResolvedValue({
+      groups: [{
+        category: {
+          createdAt: '2026-01-01T00:00:00.000Z',
+          householdId: 'household-1',
+          id: 'category-1',
+          name: 'Produce',
+          sortOrder: 0,
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        items: [{
+          ...shoppingListItem,
+          item: {
+            ...shoppingListItem.item,
+            category: {
+              createdAt: '2026-01-01T00:00:00.000Z',
+              householdId: 'household-1',
+              id: 'category-1',
+              name: 'Produce',
+              sortOrder: 0,
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+            categoryId: 'category-1',
+          },
+        }],
+      }],
+      items: [{
+        ...shoppingListItem,
+        item: {
+          ...shoppingListItem.item,
+          category: {
+            createdAt: '2026-01-01T00:00:00.000Z',
+            householdId: 'household-1',
+            id: 'category-1',
+            name: 'Produce',
+            sortOrder: 0,
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+          categoryId: 'category-1',
+        },
+      }],
+    })
+
+    renderWithProviders(<ShoppingListPage />)
+
+    expect(await screen.findByText('Tomato')).toBeInTheDocument()
+    expect(screen.getAllByText('Produce')).toHaveLength(1)
+  })
+
+  it('toggles an item when clicking its card content', async () => {
+    const user = userEvent.setup()
+
+    apiMock.getShoppingList.mockResolvedValue({
+      groups: [{ category: null, items: [shoppingListItem] }],
+      items: [shoppingListItem],
+    })
+
+    renderWithProviders(<ShoppingListPage />)
+
+    await user.click(await screen.findByText('Tomato'))
+
+    expect(apiMock.toggleShoppingListItem).toHaveBeenCalledWith('shopping-list-item-1')
   })
 })

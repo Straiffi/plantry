@@ -1,12 +1,16 @@
 import { randomBytes } from 'node:crypto'
 
 import { and, desc, eq, gt, isNull, or } from 'drizzle-orm'
-import { db, householdMembers, households, inviteCodes } from '@recipe-app/db'
+import { db, householdMembers, households, inviteCodes, user } from '@recipe-app/db'
 
 type Household = typeof households.$inferSelect
 type HouseholdMember = typeof householdMembers.$inferSelect
+type User = typeof user.$inferSelect
 type InviteCode = typeof inviteCodes.$inferSelect
 type DatabaseLike = Pick<typeof db, 'insert' | 'query' | 'select' | 'transaction' | 'update'>
+type HouseholdMemberWithUser = HouseholdMember & {
+  user: User
+}
 
 export type CurrentHousehold = {
   household: Household
@@ -43,6 +47,7 @@ type HouseholdRepository = {
     householdId: string
   }) => Promise<InviteCode>
   listActiveInviteCodesByHousehold: (householdId: string, now: Date) => Promise<InviteCode[]>
+  listHouseholdMembersByHousehold: (householdId: string) => Promise<HouseholdMemberWithUser[]>
   transaction: <T>(callback: (repository: HouseholdRepository) => Promise<T>) => Promise<T>
 }
 
@@ -159,6 +164,14 @@ export const createHouseholdRepository = (database: DatabaseLike = db): Househol
         ))
         .orderBy(desc(inviteCodes.createdAt))
     },
+    listHouseholdMembersByHousehold: async (householdId) => {
+      return database.query.householdMembers.findMany({
+        where: eq(householdMembers.householdId, householdId),
+        with: {
+          user: true,
+        },
+      })
+    },
     transaction: async (callback) => {
       return database.transaction(async (transaction) => {
         return callback(createHouseholdRepository(transaction as unknown as DatabaseLike))
@@ -237,6 +250,24 @@ export const createHouseholdService = (repository: HouseholdRepository = createH
     return repository.listActiveInviteCodesByHousehold(householdId, now)
   }
 
+  const listHouseholdMembers = async (householdId: string) => {
+    const members = await repository.listHouseholdMembersByHousehold(householdId)
+
+    return [...members].sort((left, right) => {
+      if (left.role !== right.role) {
+        return left.role === 'owner' ? -1 : 1
+      }
+
+      const nameComparison = left.user.name.localeCompare(right.user.name)
+
+      if (nameComparison !== 0) {
+        return nameComparison
+      }
+
+      return left.user.email.localeCompare(right.user.email)
+    })
+  }
+
   const joinHouseholdByInviteCode = async ({ code, userId }: JoinHouseholdByInviteCodeInput) => {
     const currentHousehold = await repository.findCurrentHouseholdForUser(userId)
 
@@ -298,6 +329,7 @@ export const createHouseholdService = (repository: HouseholdRepository = createH
     getCurrentHouseholdForUser,
     joinHouseholdByInviteCode,
     listInviteCodes,
+    listHouseholdMembers,
   }
 }
 

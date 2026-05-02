@@ -26,6 +26,30 @@ householdRoute.get('/', (context) => {
   return context.json(currentHousehold)
 })
 
+householdRoute.get('/members', async (context) => {
+  const user = getAuthenticatedUser(context)
+
+  if (!user) {
+    return context.json({
+      message: 'Unauthorized',
+    }, 401)
+  }
+
+  const currentHousehold = getCurrentHouseholdFromContext(context)
+
+  if (!currentHousehold) {
+    return context.json({
+      message: 'Household not found',
+    }, 404)
+  }
+
+  const members = await householdService.listHouseholdMembers(currentHousehold.household.id)
+
+  return context.json({
+    members,
+  })
+})
+
 householdRoute.post('/create', async (context) => {
   const user = getAuthenticatedUser(context)
 

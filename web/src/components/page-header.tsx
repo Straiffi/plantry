@@ -1,19 +1,22 @@
 import type { ReactNode } from 'react'
 
+import { cn } from '@/lib/utils'
+
 type Props = {
   actions?: ReactNode
   description?: string
   title: string
+  titleClassName?: string
 }
 
-export const PageHeader = ({ actions, description, title }: Props) => {
+export const PageHeader = ({ actions, description, title, titleClassName }: Props) => {
   return (
-    <div className="flex flex-col gap-4 border-b border-border/60 pb-5 sm:flex-row sm:items-end sm:justify-between">
-      <div className="space-y-2">
-        <h1 className="font-heading text-3xl tracking-tight text-foreground sm:text-4xl">{title}</h1>
+    <div className="flex flex-wrap items-end justify-between gap-4 border-b border-border/60 pb-5">
+      <div className="min-w-0 flex-1 space-y-2">
+        <h1 className={cn('font-heading text-2xl tracking-tight text-foreground sm:text-4xl', titleClassName)}>{title}</h1>
         {description && <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">{description}</p>}
       </div>
-      {actions && <div className="flex items-center gap-3">{actions}</div>}
+      {actions && <div className="flex shrink-0 items-center gap-3">{actions}</div>}
     </div>
   )
 }

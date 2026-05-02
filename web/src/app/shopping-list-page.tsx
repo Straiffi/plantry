@@ -4,6 +4,7 @@ import { CheckCircle2, Circle, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { api, ApiError, type ShoppingListItem } from '@/lib/api'
+import { ShoppingListPageSkeleton } from '@/components/page-skeleton'
 import { PageHeader } from '@/components/page-header'
 import { ProductPickerField, type ProductSelection } from '@/components/product-picker-field'
 import { QuantityStepper } from '@/components/quantity-stepper'
@@ -59,15 +60,21 @@ const ShoppingListRow = ({ item, onDecrease, onDelete, onIncrease, onToggle }: S
   const { t } = useTranslation()
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-background/75 px-3 py-3">
-      <Button aria-label={t('shoppingList.toggleItem')} className="shrink-0" onClick={() => onToggle(item.id)} size="icon-sm" type="button" variant="ghost">
-        {item.checked ? <CheckCircle2 className="size-5" /> : <Circle className="size-5" />}
-      </Button>
+    <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/75 px-2.5 py-2.5 sm:gap-3 sm:px-3 sm:py-3">
+      <button
+        aria-label={t('shoppingList.toggleItem')}
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-xl text-left outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30"
+        onClick={() => onToggle(item.id)}
+        type="button"
+      >
+        <span className="inline-flex shrink-0 items-center justify-center">
+          {item.checked ? <CheckCircle2 className="size-5" /> : <Circle className="size-5" />}
+        </span>
 
-      <div className="min-w-0 flex-1">
-        <p className={`font-medium ${item.checked ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{item.item.name}</p>
-        {item.item.category && <p className="text-xs text-muted-foreground">{item.item.category.name}</p>}
-      </div>
+        <div className="min-w-0 flex-1">
+          <p className={`text-sm font-medium sm:text-base ${item.checked ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{item.item.name}</p>
+        </div>
+      </button>
 
       <QuantityStepper onChange={(quantity) => {
         if (quantity < item.quantity) {
@@ -89,7 +96,7 @@ const ShoppingListDraftRow = ({ disabled, draftEntry, onClose, onQuantityChange,
   const { t } = useTranslation()
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-border/60 bg-background/75 px-3 py-3 sm:flex-row sm:items-start">
+    <div className="flex items-center gap-2 rounded-2xl border border-dashed border-border/60 bg-background/75 px-2.5 py-2.5 sm:gap-3 sm:px-3 sm:py-3">
       <ProductPickerField
         autoFocus
         disabled={disabled}
@@ -99,11 +106,11 @@ const ShoppingListDraftRow = ({ disabled, draftEntry, onClose, onQuantityChange,
         value={draftEntry.name}
       />
 
-      <div className="self-end sm:self-center">
+      <div className="shrink-0">
         <QuantityStepper disabled={disabled} onChange={onQuantityChange} value={draftEntry.quantity} />
       </div>
 
-      <Button aria-label={t('shoppingList.removeItem')} disabled={disabled} onClick={onClose} size="icon-sm" type="button" variant="ghost">
+      <Button aria-label={t('shoppingList.removeItem')} className="shrink-0" disabled={disabled} onClick={onClose} size="icon-sm" type="button" variant="ghost">
         <Trash2 className="size-4" />
       </Button>
     </div>
@@ -193,7 +200,7 @@ export const ShoppingListPage = () => {
   }
 
   if (shoppingListQuery.isPending) {
-    return null
+    return <ShoppingListPageSkeleton title={t('shoppingList.title')} titleClassName="text-2xl sm:text-4xl" />
   }
 
   const shoppingList = shoppingListQuery.data ?? { groups: [], items: [] }
@@ -239,6 +246,7 @@ export const ShoppingListPage = () => {
           </Dialog>
         }
         title={t('shoppingList.title')}
+        titleClassName="text-2xl sm:text-4xl"
       />
 
       {pageError && (
@@ -250,7 +258,7 @@ export const ShoppingListPage = () => {
       <div className="space-y-5">
         {shoppingList.items.length === 0 && !draftEntry && (
           <Card>
-            <CardContent className="space-y-4 p-6">
+            <CardContent className="space-y-4 p-5 sm:p-6">
               <p className="text-sm text-muted-foreground">{t('shoppingList.empty')}</p>
               <ShoppingListAddButton onClick={handleOpenDraftEntry} />
             </CardContent>
@@ -261,7 +269,7 @@ export const ShoppingListPage = () => {
 
         {shoppingList.items.length > 0 && (
           <Card className="border-border/60 bg-card/90">
-            <CardContent className="space-y-6 p-4 sm:p-6">
+            <CardContent className="space-y-4 p-3 sm:space-y-6 sm:p-6">
               {shoppingList.items.map((item, index) => {
                 const previousItem = shoppingList.items[index - 1]
                 const previousCategoryId = previousItem?.item.category?.id ?? null
@@ -269,16 +277,16 @@ export const ShoppingListPage = () => {
                 const shouldShowCategoryHeading = index === 0 || currentCategoryId !== previousCategoryId
 
                 return (
-                  <section className="space-y-3" key={item.id}>
+                  <section className="space-y-2 sm:space-y-3" key={item.id}>
                     {shouldShowCategoryHeading && (
                       <div className="px-1">
-                        <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                        <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground sm:text-sm">
                           {item.item.category?.name ?? t('shoppingList.uncategorized')}
                         </h2>
                       </div>
                     )}
 
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                       <ShoppingListRow
                         item={item}
                         onDecrease={(currentItem) => updateItemMutation.mutate({

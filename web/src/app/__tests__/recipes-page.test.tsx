@@ -50,6 +50,15 @@ describe('RecipesPage', () => {
     apiMock.searchProducts.mockResolvedValue([])
   })
 
+  it('renders a loading skeleton while recipes are pending', () => {
+    apiMock.getRecipes.mockReturnValue(new Promise(() => {}))
+
+    renderWithProviders(<RecipesPage />)
+
+    expect(screen.getByTestId('recipes-page-skeleton')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Recipes' })).toBeInTheDocument()
+  })
+
   it('keeps the create form collapsed until Add recipe is pressed', async () => {
     const user = userEvent.setup()
 

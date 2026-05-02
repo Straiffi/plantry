@@ -56,11 +56,12 @@ describe('AppShell', () => {
       </AppContext.Provider>,
     )
 
-    expect(screen.getAllByText('Recipe App')).toHaveLength(2)
+    expect(screen.getAllByText('Plantry')).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: 'Recipes' })).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: 'Shopping List' })).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: 'Products' })).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: 'Settings' })).toHaveLength(2)
+    expect(screen.getAllByText('owner member')).toHaveLength(1)
     expect(screen.queryByText('Move between groceries, recipes, products, and settings without losing the shared household context.')).not.toBeInTheDocument()
   })
 })

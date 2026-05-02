@@ -3,7 +3,7 @@ export const resources = {
     translation: {
       app: {
         loading: 'Loading your kitchen workspace...',
-        name: 'Recipe App',
+        name: 'Plantry',
         retry: 'Retry',
         workspaceErrorDescription: 'Try refreshing your session to reconnect with the household data.',
         workspaceErrorTitle: "We couldn't load your workspace",
@@ -116,6 +116,7 @@ export const resources = {
       settings: {
         accountDescription: 'Use Google sign-in for shared access and quick session recovery.',
         accountTitle: 'Account',
+        copyInviteCode: 'Copy code',
         createInvite: 'Generate invite code',
         description: 'Review household details, invite another member, and manage the current session.',
         householdDescription: 'This household scope controls the shared products, recipes, and shopping list data.',
@@ -123,11 +124,16 @@ export const resources = {
         inviteReady: 'Ready to share',
         invitesDescription: 'Invite codes are single-use. Generate a new one whenever another household member needs access.',
         invitesTitle: 'Invite codes',
+        membersDescription: 'See who currently has access to this household.',
+        membersEmpty: 'No one else has joined this household yet.',
+        membersError: 'We could not load the household members right now.',
+        membersTitle: 'Household members',
         noHousehold: 'No household connected yet',
         noInvites: 'No invite codes yet. Generate one when someone else is ready to join.',
         roleLabel: '{{role}} member',
         signOut: 'Sign out',
         title: 'Settings',
+        youLabel: 'You',
       },
       shell: {
         noHousehold: 'Household not set',

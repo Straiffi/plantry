@@ -42,7 +42,7 @@ const NavItem = ({ isActive, section }: NavItemProps) => {
       to={section.href}
     >
       <Icon className="size-4" />
-      <span>{t(section.labelKey)}</span>
+      <span className="text-center leading-tight lg:text-left">{t(section.labelKey)}</span>
     </Link>
   )
 }
@@ -85,7 +85,6 @@ export const AppShell = ({ children }: Props) => {
                 <p className="text-xs font-semibold uppercase tracking-[0.15em] text-primary">{t('app.name')}</p>
                 <p className="text-sm text-muted-foreground">{household?.name ?? t('shell.noHousehold')}</p>
               </div>
-              {householdMembership && <Badge variant="outline">{t('shell.roleLabel', { role: householdMembership.role })}</Badge>}
             </div>
           </header>
 

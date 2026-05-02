@@ -13,6 +13,20 @@ export type HouseholdMembership = {
   userId: string
 }
 
+export type HouseholdMember = {
+  createdAt: string
+  householdId: string
+  id: string
+  role: string
+  user: {
+    email: string
+    id: string
+    image: string | null
+    name: string
+  }
+  userId: string
+}
+
 export type Category = {
   createdAt: string
   householdId: string
@@ -267,6 +281,11 @@ export const api = {
     const response = await request<{ inviteCodes: InviteCode[] }>('/invite-codes')
 
     return response.inviteCodes
+  },
+  getHouseholdMembers: async () => {
+    const response = await request<{ members: HouseholdMember[] }>('/household/members')
+
+    return response.members
   },
   getMe: async () => {
     return request<MeResponse>('/me')

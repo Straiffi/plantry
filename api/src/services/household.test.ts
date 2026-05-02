@@ -12,6 +12,7 @@ const createRepositoryMock = () => {
     insertHouseholdMembership: vi.fn(),
     insertInviteCode: vi.fn(),
     listActiveInviteCodesByHousehold: vi.fn(),
+    listHouseholdMembersByHousehold: vi.fn(),
     transaction: vi.fn(),
   }
 
@@ -142,5 +143,87 @@ describe('householdService', () => {
     await expect(service.joinHouseholdByInviteCode({ code: 'missing', userId: 'user-2' })).rejects.toMatchObject({
       code: 'INVALID_INVITE_CODE',
     } satisfies Partial<HouseholdServiceError>)
+  })
+
+  it('lists household members with owners first and remaining members sorted by name', async () => {
+    const repository = createRepositoryMock()
+    const service = createHouseholdService(repository)
+
+    repository.listHouseholdMembersByHousehold.mockResolvedValue([
+      {
+        createdAt: new Date('2026-01-03T00:00:00.000Z'),
+        householdId: 'household-1',
+        id: 'membership-3',
+        role: 'member',
+        user: {
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          email: 'zara@example.com',
+          emailVerified: true,
+          id: 'user-3',
+          image: null,
+          name: 'Zara Cook',
+          updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        },
+        userId: 'user-3',
+      },
+      {
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        householdId: 'household-1',
+        id: 'membership-1',
+        role: 'owner',
+        user: {
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          email: 'owner@example.com',
+          emailVerified: true,
+          id: 'user-1',
+          image: null,
+          name: 'Owner User',
+          updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        },
+        userId: 'user-1',
+      },
+      {
+        createdAt: new Date('2026-01-02T00:00:00.000Z'),
+        householdId: 'household-1',
+        id: 'membership-2',
+        role: 'member',
+        user: {
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          email: 'alex@example.com',
+          emailVerified: true,
+          id: 'user-2',
+          image: null,
+          name: 'Alex Baker',
+          updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        },
+        userId: 'user-2',
+      },
+    ])
+
+    await expect(service.listHouseholdMembers('household-1')).resolves.toMatchObject([
+      {
+        id: 'membership-1',
+        role: 'owner',
+        user: {
+          name: 'Owner User',
+        },
+      },
+      {
+        id: 'membership-2',
+        role: 'member',
+        user: {
+          name: 'Alex Baker',
+        },
+      },
+      {
+        id: 'membership-3',
+        role: 'member',
+        user: {
+          name: 'Zara Cook',
+        },
+      },
+    ])
+
+    expect(repository.listHouseholdMembersByHousehold).toHaveBeenCalledWith('household-1')
   })
 })

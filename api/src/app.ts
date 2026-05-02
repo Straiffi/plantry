@@ -38,7 +38,7 @@ app.use('*', authSessionMiddleware)
 
 app.get('/', (context) => {
   return context.json({
-    message: 'Recipe App API is ready',
+    message: 'Plantry API is ready',
     status: 'ok',
   })
 })

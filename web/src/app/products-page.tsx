@@ -7,6 +7,7 @@ import { Archive, GripVertical, RotateCcw, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { api, ApiError, type Category, type Product } from '@/lib/api'
+import { ProductsPageSkeleton } from '@/components/page-skeleton'
 import { PageHeader } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -278,7 +279,7 @@ export const ProductsPage = () => {
   }
 
   if (categoriesQuery.isPending || productsQuery.isPending) {
-    return null
+    return <ProductsPageSkeleton title={t('products.title')} />
   }
 
   return (

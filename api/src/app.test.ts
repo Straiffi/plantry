@@ -114,6 +114,7 @@ const recipe = {
 
 const protectedRouteCases: ProtectedRouteCase[] = [
   { method: 'GET', path: 'http://localhost/api/household' },
+  { method: 'GET', path: 'http://localhost/api/household/members' },
   { method: 'GET', path: 'http://localhost/api/invite-codes' },
   { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/invite-codes' },
   { method: 'GET', path: 'http://localhost/api/categories' },
@@ -145,6 +146,7 @@ const protectedRouteCases: ProtectedRouteCase[] = [
 
 const householdScopedRouteCases: ProtectedRouteCase[] = [
   { method: 'GET', path: 'http://localhost/api/household' },
+  { method: 'GET', path: 'http://localhost/api/household/members' },
   { method: 'GET', path: 'http://localhost/api/invite-codes' },
   { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/invite-codes' },
   { method: 'GET', path: 'http://localhost/api/categories' },
@@ -338,6 +340,72 @@ describe('app', () => {
     expect(joinHouseholdSpy).toHaveBeenCalledWith({
       code: 'invite-123',
       userId: 'user-1',
+    })
+  })
+
+  it('lists members for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const listHouseholdMembersSpy = vi.spyOn(householdService, 'listHouseholdMembers').mockResolvedValue([
+      {
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        householdId: 'household-1',
+        id: 'membership-1',
+        role: 'owner',
+        user: {
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          email: 'owner@example.com',
+          emailVerified: true,
+          id: 'user-1',
+          image: null,
+          name: 'Owner User',
+          updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        },
+        userId: 'user-1',
+      },
+      {
+        createdAt: new Date('2026-01-02T00:00:00.000Z'),
+        householdId: 'household-1',
+        id: 'membership-2',
+        role: 'member',
+        user: {
+          createdAt: new Date('2026-01-02T00:00:00.000Z'),
+          email: 'member@example.com',
+          emailVerified: true,
+          id: 'user-2',
+          image: null,
+          name: 'Member User',
+          updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+        },
+        userId: 'user-2',
+      },
+    ])
+
+    const response = await app.request('http://localhost/api/household/members')
+
+    expect(response.status).toBe(200)
+    expect(listHouseholdMembersSpy).toHaveBeenCalledWith('household-1')
+    await expect(response.json()).resolves.toMatchObject({
+      members: [
+        {
+          householdId: 'household-1',
+          role: 'owner',
+          user: {
+            email: 'owner@example.com',
+            name: 'Owner User',
+          },
+          userId: 'user-1',
+        },
+        {
+          householdId: 'household-1',
+          role: 'member',
+          user: {
+            email: 'member@example.com',
+            name: 'Member User',
+          },
+          userId: 'user-2',
+        },
+      ],
     })
   })
 

@@ -5,6 +5,7 @@ import { Plus, Save, Send, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { api, ApiError } from '@/lib/api'
+import { RecipeDetailPageSkeleton } from '@/components/page-skeleton'
 import { PageHeader } from '@/components/page-header'
 import { RecipeItemEditor, type RecipeDraftItem } from '@/components/recipe-item-editor'
 import { Button } from '@/components/ui/button'
@@ -27,7 +28,7 @@ export const RecipeDetailPage = () => {
   })
 
   if (recipeQuery.isPending) {
-    return null
+    return <RecipeDetailPageSkeleton />
   }
 
   if (!recipeQuery.data) {
