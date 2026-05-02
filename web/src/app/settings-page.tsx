@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Copy, LogOut, Mail, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 export const SettingsPage = () => {
   const { t } = useTranslation()
+  const [isSigningOut, setIsSigningOut] = useState(false)
   const queryClient = useQueryClient()
   const { household, householdMembership, user } = useAppContext()
   const householdMembersQuery = useQuery({
@@ -23,6 +25,7 @@ export const SettingsPage = () => {
     queryKey: ['invite-codes'],
   })
   const createInviteCodeMutation = useMutation({
+    mutationKey: ['settings', 'create-invite-code'],
     mutationFn: api.createInviteCode,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['invite-codes'] })
@@ -30,8 +33,14 @@ export const SettingsPage = () => {
   })
 
   const handleSignOut = async () => {
-    await authClient.signOut()
-    window.location.assign('/login')
+    setIsSigningOut(true)
+
+    try {
+      await authClient.signOut()
+      window.location.assign('/login')
+    } finally {
+      setIsSigningOut(false)
+    }
   }
 
   const handleCopyInviteCode = async (code: string) => {
@@ -96,7 +105,7 @@ export const SettingsPage = () => {
                   <p className="text-muted-foreground">{user.email}</p>
                 </div>
               </div>
-              <Button onClick={handleSignOut} type="button" variant="outline">
+              <Button loading={isSigningOut} onClick={handleSignOut} type="button" variant="outline">
                 <LogOut className="size-4" />
                 <span>{t('settings.signOut')}</span>
               </Button>
@@ -110,7 +119,7 @@ export const SettingsPage = () => {
             <CardDescription>{t('settings.invitesDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button disabled={createInviteCodeMutation.isPending} onClick={() => createInviteCodeMutation.mutate()} type="button">
+            <Button loading={createInviteCodeMutation.isPending} onClick={() => createInviteCodeMutation.mutate()} type="button">
               <Copy className="size-4" />
               <span>{t('settings.createInvite')}</span>
             </Button>

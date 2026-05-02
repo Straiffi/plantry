@@ -80,6 +80,7 @@ const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
   }
 
   const updateRecipeMutation = useMutation({
+    mutationKey: ['recipe-detail', recipeId, 'update'],
     mutationFn: () => api.updateRecipe(recipeId, {
       items: items.filter((item) => item.name.trim()).map((item, index) => ({
         itemId: item.itemId,
@@ -96,10 +97,12 @@ const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
     },
   })
   const addToShoppingListMutation = useMutation({
+    mutationKey: ['recipe-detail', recipeId, 'add-to-shopping-list'],
     mutationFn: () => api.addRecipeToShoppingList(recipeId),
     onSuccess: refreshRecipes,
   })
   const deleteRecipeMutation = useMutation({
+    mutationKey: ['recipe-detail', recipeId, 'delete'],
     mutationFn: () => api.deleteRecipe(recipeId),
     onSuccess: async () => {
       await Promise.all([
@@ -109,6 +112,7 @@ const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
       window.location.assign('/recipes')
     },
   })
+  const isRecipeActionPending = updateRecipeMutation.isPending || addToShoppingListMutation.isPending || deleteRecipeMutation.isPending
 
   return (
     <div className="space-y-8">
@@ -146,15 +150,15 @@ const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
               <Plus className="size-4" />
               <span>{t('recipes.addItemRow')}</span>
             </Button>
-            <Button onClick={() => updateRecipeMutation.mutate(undefined, { onError: handleMutationError })} type="button">
+            <Button disabled={isRecipeActionPending} loading={updateRecipeMutation.isPending} onClick={() => updateRecipeMutation.mutate(undefined, { onError: handleMutationError })} type="button">
               <Save className="size-4" />
               <span>{t('recipes.saveRecipe')}</span>
             </Button>
-            <Button onClick={() => addToShoppingListMutation.mutate(undefined, { onError: handleMutationError })} type="button" variant="secondary">
+            <Button disabled={isRecipeActionPending} loading={addToShoppingListMutation.isPending} onClick={() => addToShoppingListMutation.mutate(undefined, { onError: handleMutationError })} type="button" variant="secondary">
               <Send className="size-4" />
               <span>{t('recipes.addToShoppingList')}</span>
             </Button>
-            <Button onClick={() => deleteRecipeMutation.mutate(undefined, { onError: handleMutationError })} type="button" variant="ghost">
+            <Button disabled={isRecipeActionPending} loading={deleteRecipeMutation.isPending} onClick={() => deleteRecipeMutation.mutate(undefined, { onError: handleMutationError })} type="button" variant="ghost">
               <Trash2 className="size-4" />
               <span>{t('recipes.deleteRecipe')}</span>
             </Button>

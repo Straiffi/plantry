@@ -93,7 +93,7 @@ export const LoginPage = () => {
             <CardDescription className="text-base leading-7">{t('auth.panelDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            <Button className="h-12 w-full rounded-xl text-base" disabled={isSigningIn} onClick={handleSignIn}>
+            <Button className="h-12 w-full rounded-xl text-base" loading={isSigningIn} onClick={handleSignIn}>
               {isSigningIn ? t('auth.signingIn') : t('auth.googleButton')}
             </Button>
           </CardContent>

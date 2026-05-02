@@ -161,4 +161,23 @@ describe('SettingsPage', () => {
       expect(writeTextSpy).toHaveBeenCalledWith('OPLY9AJ2QY')
     })
   })
+
+  it('shows a loading state while signing out', async () => {
+    const user = userEvent.setup()
+    let resolveSignOut!: () => void
+
+    authClientMock.signOut.mockImplementationOnce(() => new Promise<void>((resolve) => {
+      resolveSignOut = resolve
+    }))
+    apiMock.getHouseholdMembers.mockResolvedValue([])
+
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Sign out' }))
+
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Sign out' })).toHaveAttribute('aria-busy', 'true')
+
+    resolveSignOut()
+  })
 })

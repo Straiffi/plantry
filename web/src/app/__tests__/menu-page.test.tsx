@@ -66,6 +66,16 @@ const menuItem = {
   updatedAt: '2026-01-03T12:00:00.000Z',
 }
 
+const createDeferred = <T,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void
+
+  const promise = new Promise<T>((innerResolve) => {
+    resolve = innerResolve
+  })
+
+  return { promise, resolve }
+}
+
 describe('MenuPage', () => {
   afterEach(() => {
     cleanup()
@@ -165,6 +175,31 @@ describe('MenuPage', () => {
 
     await waitFor(() => {
       expect(apiMock.deleteCheckedMenuItems).toHaveBeenCalled()
+    })
+  })
+
+  it('keeps the delete dialog open while deletion is pending', async () => {
+    const deferredDelete = createDeferred<{ deletedCount: number }>()
+    const user = userEvent.setup()
+
+    apiMock.deleteCheckedMenuItems.mockImplementationOnce(() => deferredDelete.promise)
+    apiMock.getMenu.mockResolvedValue({ items: [{ ...menuItem, checked: true, checkedAt: '2026-01-04T00:00:00.000Z' }] })
+
+    renderWithProviders(<MenuPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Delete checked' }))
+    await user.click(await screen.findByRole('button', { name: 'Delete checked menu rows' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Delete checked menu rows' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Delete checked menu rows' })).toHaveAttribute('aria-busy', 'true')
+    })
+
+    deferredDelete.resolve({ deletedCount: 1 })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
 })

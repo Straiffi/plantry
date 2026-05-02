@@ -403,27 +403,29 @@ export const createItemCatalogService = (repository: ItemCatalogRepository = cre
   }
 
   const reorderCategories = async ({ householdId, orderedCategoryIds }: ReorderCategoriesInput) => {
-    const categories = await repository.listCategories(householdId)
+    return repository.transaction(async (transactionRepository) => {
+      const categories = await transactionRepository.listCategories(householdId)
 
-    if (orderedCategoryIds.length !== categories.length) {
-      throw new ItemCatalogServiceError('CATEGORY_NOT_FOUND', 'Category not found')
-    }
-
-    const categoryIds = new Set(categories.map((category) => category.id))
-
-    for (const categoryId of orderedCategoryIds) {
-      if (!categoryIds.has(categoryId)) {
+      if (orderedCategoryIds.length !== categories.length) {
         throw new ItemCatalogServiceError('CATEGORY_NOT_FOUND', 'Category not found')
       }
-    }
 
-    await repository.reorderCategories({
-      householdId,
-      orderedCategoryIds,
-      updatedAt: new Date(),
+      const categoryIds = new Set(categories.map((category) => category.id))
+
+      for (const categoryId of orderedCategoryIds) {
+        if (!categoryIds.has(categoryId)) {
+          throw new ItemCatalogServiceError('CATEGORY_NOT_FOUND', 'Category not found')
+        }
+      }
+
+      await transactionRepository.reorderCategories({
+        householdId,
+        orderedCategoryIds,
+        updatedAt: new Date(),
+      })
+
+      return transactionRepository.listCategories(householdId)
     })
-
-    return repository.listCategories(householdId)
   }
 
   const assertValidCategory = async (

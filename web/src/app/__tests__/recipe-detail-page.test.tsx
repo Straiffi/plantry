@@ -106,4 +106,49 @@ describe('RecipeDetailPage', () => {
       expect(assignMock).toHaveBeenCalledWith('/recipes')
     })
   })
+
+  it('shows a loading state while saving recipe changes', async () => {
+    const user = userEvent.setup()
+    let resolveUpdate!: () => void
+
+    apiMock.getRecipe.mockResolvedValue({
+      createdAt: '2026-01-01T00:00:00.000Z',
+      createdByUserId: 'user-1',
+      householdId: 'household-1',
+      id: 'recipe-1',
+      items: [{
+        createdAt: '2026-01-01T00:00:00.000Z',
+        id: 'recipe-item-1',
+        item: {
+          archivedAt: null,
+          category: null,
+          categoryId: null,
+          id: 'item-1',
+          name: 'Tomato',
+        },
+        itemId: 'item-1',
+        quantity: 2,
+        recipeId: 'recipe-1',
+        sortOrder: 0,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      }],
+      name: 'Pasta',
+      notes: 'Fresh sauce',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    })
+    apiMock.updateRecipe.mockImplementationOnce(() => new Promise<void>((resolve) => {
+      resolveUpdate = resolve
+    }))
+
+    renderWithProviders(<RecipeDetailPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Save recipe' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Save recipe' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Save recipe' })).toHaveAttribute('aria-busy', 'true')
+    })
+
+    resolveUpdate()
+  })
 })

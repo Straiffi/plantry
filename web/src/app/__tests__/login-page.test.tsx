@@ -50,4 +50,22 @@ describe('LoginPage', () => {
       provider: 'google',
     })
   })
+
+  it('shows a loading state while Google sign-in is pending', async () => {
+    const user = userEvent.setup()
+    let resolveSignIn!: () => void
+
+    socialSignIn.mockImplementationOnce(() => new Promise<void>((resolve) => {
+      resolveSignIn = resolve
+    }))
+
+    renderWithProviders(<LoginPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }))
+
+    expect(screen.getByRole('button', { name: 'Opening Google sign-in...' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Opening Google sign-in...' })).toHaveAttribute('aria-busy', 'true')
+
+    resolveSignIn()
+  })
 })

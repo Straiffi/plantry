@@ -1,5 +1,6 @@
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
+import { LoaderCircle } from 'lucide-react'
 import type { ButtonHTMLAttributes } from 'react'
 
 import { cn } from '@/lib/utils'
@@ -35,16 +36,40 @@ const buttonVariants = cva(
 type Props = ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    loading?: boolean
   }
 
 export const Button = ({
   asChild = false,
   className,
+  children,
+  disabled,
+  loading = false,
   size = 'default',
   variant = 'default',
   ...props
 }: Props) => {
   const Comp = asChild ? Slot : 'button'
+  const contentClassName = cn(
+    'inline-flex items-center',
+    size === 'xs' || size === 'sm' ? 'gap-1' : 'gap-1.5',
+  )
 
-  return <Comp className={cn(buttonVariants({ className, size, variant }))} data-size={size} data-variant={variant} {...props} />
+  if (asChild) {
+    return <Comp className={cn(buttonVariants({ className, size, variant }))} data-size={size} data-variant={variant} {...props}>{children}</Comp>
+  }
+
+  return (
+    <Comp
+      aria-busy={loading || undefined}
+      className={cn(buttonVariants({ className, size, variant }), loading && 'relative')}
+      data-size={size}
+      data-variant={variant}
+      disabled={disabled || loading}
+      {...props}
+    >
+      {loading && <LoaderCircle aria-hidden className="absolute size-4 animate-spin" />}
+      <span className={cn(contentClassName, loading && 'opacity-0')}>{children}</span>
+    </Comp>
+  )
 }

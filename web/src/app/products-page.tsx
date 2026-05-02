@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { DndContext, DragOverlay, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, defaultAnimateLayoutChanges, useSortable, verticalListSortingStrategy, type AnimateLayoutChanges } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Archive, GripVertical, RotateCcw, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 type CategoryRowProps = {
   category: Category
+  isDeleting?: boolean
   isDragging?: boolean
   onDelete: (categoryId: string) => void
 }
@@ -31,13 +32,15 @@ const applyCategorySortOrder = (categories: Category[]) => {
 
 type ProductCardProps = {
   categories: Category[]
+  isCategoryUpdating: boolean
+  isStatusUpdating: boolean
   onArchive: (itemId: string) => void
   onCategoryChange: (itemId: string, categoryId: string | null) => void
   onRestore: (itemId: string) => void
   product: Product
 }
 
-const ProductCard = ({ categories, onArchive, onCategoryChange, onRestore, product }: ProductCardProps) => {
+const ProductCard = ({ categories, isCategoryUpdating, isStatusUpdating, onArchive, onCategoryChange, onRestore, product }: ProductCardProps) => {
   const { t } = useTranslation()
 
   return (
@@ -54,7 +57,7 @@ const ProductCard = ({ categories, onArchive, onCategoryChange, onRestore, produ
             </CardDescription>
           </div>
 
-          <Button onClick={() => (product.archivedAt ? onRestore(product.id) : onArchive(product.id))} variant="outline">
+          <Button loading={isStatusUpdating} onClick={() => (product.archivedAt ? onRestore(product.id) : onArchive(product.id))} variant="outline">
             {product.archivedAt ? <RotateCcw className="size-4" /> : <Archive className="size-4" />}
             <span>{product.archivedAt ? t('products.restore') : t('products.archive')}</span>
           </Button>
@@ -63,8 +66,8 @@ const ProductCard = ({ categories, onArchive, onCategoryChange, onRestore, produ
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t('products.categoryLabel')}</p>
-          <Select onValueChange={(value) => onCategoryChange(product.id, value === 'uncategorized' ? null : value)} value={product.categoryId ?? 'uncategorized'}>
-            <SelectTrigger className="w-full">
+          <Select disabled={isCategoryUpdating} onValueChange={(value) => onCategoryChange(product.id, value === 'uncategorized' ? null : value)} value={product.categoryId ?? 'uncategorized'}>
+            <SelectTrigger className="w-full" loading={isCategoryUpdating}>
               <SelectValue placeholder={t('products.uncategorized')} />
             </SelectTrigger>
             <SelectContent>
@@ -82,7 +85,7 @@ const ProductCard = ({ categories, onArchive, onCategoryChange, onRestore, produ
   )
 }
 
-const CategoryRowContent = ({ category, isDragging = false, onDelete }: CategoryRowProps) => {
+const CategoryRowContent = ({ category, isDeleting = false, isDragging = false, onDelete }: CategoryRowProps) => {
   const { t } = useTranslation()
 
   return (
@@ -94,7 +97,7 @@ const CategoryRowContent = ({ category, isDragging = false, onDelete }: Category
         </div>
         <p className="text-xs text-muted-foreground">{t('products.sortOrderLabel', { value: category.sortOrder })}</p>
       </div>
-      <Button onClick={() => onDelete(category.id)} type="button" variant="ghost">
+      <Button loading={isDeleting} onClick={() => onDelete(category.id)} type="button" variant="ghost">
         <Trash2 className="size-4" />
         <span>{t('products.deleteCategory')}</span>
       </Button>
@@ -110,7 +113,7 @@ const animateCategoryLayoutChanges: AnimateLayoutChanges = (args) => {
   return false
 }
 
-const SortableCategoryRow = ({ category, onDelete }: CategoryRowProps) => {
+const SortableCategoryRow = ({ category, isDeleting = false, onDelete }: CategoryRowProps) => {
   const { attributes, isDragging, listeners, setNodeRef, transform, transition } = useSortable({
     animateLayoutChanges: animateCategoryLayoutChanges,
     id: category.id,
@@ -127,7 +130,7 @@ const SortableCategoryRow = ({ category, onDelete }: CategoryRowProps) => {
       {...attributes}
       {...listeners}
     >
-      <CategoryRowContent category={category} isDragging={isDragging} onDelete={onDelete} />
+      <CategoryRowContent category={category} isDeleting={isDeleting} isDragging={isDragging} onDelete={onDelete} />
     </div>
   )
 }
@@ -135,6 +138,7 @@ const SortableCategoryRow = ({ category, onDelete }: CategoryRowProps) => {
 export const ProductsPage = () => {
   const { t } = useTranslation()
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
+  const latestCategoryReorderRequestId = useRef(0)
   const queryClient = useQueryClient()
   const [categoryName, setCategoryName] = useState('')
   const [productCategoryId, setProductCategoryId] = useState<string>('')
@@ -168,6 +172,7 @@ export const ProductsPage = () => {
   }
 
   const createCategoryMutation = useMutation({
+    mutationKey: ['products', 'create-category'],
     mutationFn: (name: string) => api.createCategory(name),
     onSuccess: async () => {
       setCategoryName('')
@@ -176,32 +181,46 @@ export const ProductsPage = () => {
     },
   })
   const deleteCategoryMutation = useMutation({
+    mutationKey: ['products', 'delete-category'],
     mutationFn: (categoryId: string) => api.deleteCategory(categoryId),
     onSuccess: invalidateCatalog,
   })
-  const reorderCategoriesMutation = useMutation<Category[], unknown, Category[], { previousCategories?: Category[] }>({
+  const reorderCategoriesMutation = useMutation<Category[], unknown, Category[], { previousCategories?: Category[]; requestId: number }>({
+    mutationKey: ['products', 'reorder-categories'],
     mutationFn: (nextCategories: Category[]) => api.reorderCategories(nextCategories.map((category) => category.id)),
     onError: (_error, _nextCategories, context) => {
-      if (context?.previousCategories) {
+      if (!context || context.requestId !== latestCategoryReorderRequestId.current) {
+        return
+      }
+
+      if (context.previousCategories) {
         queryClient.setQueryData(['categories'], context.previousCategories)
       }
     },
     onMutate: async (nextCategories) => {
+      const requestId = latestCategoryReorderRequestId.current + 1
       const optimisticCategories = applyCategorySortOrder(nextCategories)
+
+      latestCategoryReorderRequestId.current = requestId
       await queryClient.cancelQueries({ queryKey: ['categories'] })
 
       const previousCategories = queryClient.getQueryData<Category[]>(['categories'])
 
       queryClient.setQueryData(['categories'], optimisticCategories)
 
-      return { previousCategories }
+      return { previousCategories, requestId }
     },
-    onSuccess: async (categories) => {
+    onSuccess: async (categories, _nextCategories, context) => {
+      if (!context || context.requestId !== latestCategoryReorderRequestId.current) {
+        return
+      }
+
       queryClient.setQueryData(['categories'], categories)
       await invalidateCategoryDependents()
     },
   })
   const createProductMutation = useMutation({
+    mutationKey: ['products', 'create-product'],
     mutationFn: () => api.createProduct({
       categoryId: productCategoryId ? productCategoryId : null,
       name: productName,
@@ -214,16 +233,36 @@ export const ProductsPage = () => {
     },
   })
   const archiveProductMutation = useMutation({
+    mutationKey: ['products', 'archive-product'],
     mutationFn: (itemId: string) => api.archiveProduct(itemId),
     onSuccess: invalidateCatalog,
   })
   const restoreProductMutation = useMutation({
+    mutationKey: ['products', 'restore-product'],
     mutationFn: (itemId: string) => api.restoreProduct(itemId),
     onSuccess: invalidateCatalog,
   })
   const updateProductMutation = useMutation({
+    mutationKey: ['products', 'update-product'],
     mutationFn: ({ categoryId, itemId }: { categoryId: string | null; itemId: string }) => api.updateProduct(itemId, { categoryId }),
     onSuccess: invalidateCatalog,
+  })
+
+  const pendingDeletedCategoryIds = useMutationState({
+    filters: { mutationKey: ['products', 'delete-category'], status: 'pending' },
+    select: (mutation) => mutation.state.variables as string,
+  })
+  const pendingArchivedProductIds = useMutationState({
+    filters: { mutationKey: ['products', 'archive-product'], status: 'pending' },
+    select: (mutation) => mutation.state.variables as string,
+  })
+  const pendingRestoredProductIds = useMutationState({
+    filters: { mutationKey: ['products', 'restore-product'], status: 'pending' },
+    select: (mutation) => mutation.state.variables as string,
+  })
+  const pendingUpdatedProductIds = useMutationState({
+    filters: { mutationKey: ['products', 'update-product'], status: 'pending' },
+    select: (mutation) => (mutation.state.variables as { categoryId: string | null; itemId: string }).itemId,
   })
 
   const handleMutationError = (error: unknown) => {
@@ -310,7 +349,7 @@ export const ProductsPage = () => {
               <div className="flex gap-3">
                 <Input onChange={(event) => setCategoryName(event.target.value)} placeholder={t('products.categoryPlaceholder')} value={categoryName} />
                 <Button
-                  disabled={createCategoryMutation.isPending}
+                  loading={createCategoryMutation.isPending}
                   onClick={() => createCategoryMutation.mutate(categoryName, { onError: handleMutationError })}
                   type="button"
                 >
@@ -330,7 +369,7 @@ export const ProductsPage = () => {
                     <SortableContext items={categories.map((category) => category.id)} strategy={verticalListSortingStrategy}>
                       <div className="space-y-3">
                         {categories.map((category) => (
-                          <SortableCategoryRow category={category} key={category.id} onDelete={handleCategoryDelete} />
+                          <SortableCategoryRow category={category} isDeleting={pendingDeletedCategoryIds.includes(category.id)} key={category.id} onDelete={handleCategoryDelete} />
                         ))}
                       </div>
                     </SortableContext>
@@ -373,7 +412,7 @@ export const ProductsPage = () => {
               </div>
               <Button
                 className="w-full"
-                disabled={createProductMutation.isPending}
+                loading={createProductMutation.isPending}
                 onClick={() => createProductMutation.mutate(undefined, { onError: handleMutationError })}
                 type="button"
               >
@@ -392,6 +431,8 @@ export const ProductsPage = () => {
           {visibleProducts.map((product) => (
             <ProductCard
               categories={categories}
+              isCategoryUpdating={pendingUpdatedProductIds.includes(product.id)}
+              isStatusUpdating={pendingArchivedProductIds.includes(product.id) || pendingRestoredProductIds.includes(product.id)}
               key={product.id}
               onArchive={(itemId) => archiveProductMutation.mutate(itemId, { onError: handleMutationError })}
               onCategoryChange={(itemId, categoryId) => updateProductMutation.mutate({ categoryId, itemId }, { onError: handleMutationError })}

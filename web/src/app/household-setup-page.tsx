@@ -80,6 +80,7 @@ export const HouseholdSetupPage = () => {
                 <Button
                   className="w-full"
                   disabled={createHouseholdMutation.isPending || !householdName.trim()}
+                  loading={createHouseholdMutation.isPending}
                   onClick={() => createHouseholdMutation.mutate(undefined, {
                     onError: (error) => {
                       setCreateError(getCreateErrorMessage(error, t))
@@ -110,6 +111,7 @@ export const HouseholdSetupPage = () => {
                 <Button
                   className="w-full"
                   disabled={joinHouseholdMutation.isPending || !inviteCode.trim()}
+                  loading={joinHouseholdMutation.isPending}
                   onClick={() => joinHouseholdMutation.mutate(undefined, {
                     onError: (error) => {
                       setJoinError(getJoinErrorMessage(error, t))

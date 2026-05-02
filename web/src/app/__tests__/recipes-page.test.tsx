@@ -95,6 +95,16 @@ const recipes = [
   },
 ]
 
+const createDeferred = <T,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void
+
+  const promise = new Promise<T>((innerResolve) => {
+    resolve = innerResolve
+  })
+
+  return { promise, resolve }
+}
+
 describe('RecipesPage', () => {
   afterEach(() => {
     cleanup()
@@ -238,6 +248,30 @@ describe('RecipesPage', () => {
     await waitFor(() => {
       expect(apiMock.addRecipeToMenu).toHaveBeenCalledWith('recipe-1')
     })
+  })
+
+  it('shows loading only on the recipe action that is pending', async () => {
+    const deferredAddToMenu = createDeferred<typeof recipes[0]>()
+    const user = userEvent.setup()
+
+    apiMock.addRecipeToMenu.mockImplementationOnce(() => deferredAddToMenu.promise)
+    apiMock.getRecipes.mockResolvedValue(recipes)
+
+    renderWithProviders(<RecipesPage />)
+
+    const addToMenuButtons = await screen.findAllByRole('button', { name: 'Add to menu' })
+
+    await user.click(addToMenuButtons[0]!)
+
+    await waitFor(() => {
+      const updatedButtons = screen.getAllByRole('button', { name: 'Add to menu' })
+
+      expect(updatedButtons[0]).toBeDisabled()
+      expect(updatedButtons[0]).toHaveAttribute('aria-busy', 'true')
+      expect(updatedButtons[1]).not.toBeDisabled()
+    })
+
+    deferredAddToMenu.resolve(recipes[0]!)
   })
 
   it('sorts recipes by menu date with not-yet-added recipes last', async () => {

@@ -1,6 +1,6 @@
 import { Select as SelectPrimitive } from 'radix-ui'
 import type { ComponentProps } from 'react'
-import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react'
+import { CheckIcon, ChevronDownIcon, ChevronUpIcon, LoaderCircle } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -13,12 +13,14 @@ export const SelectValue = (props: ComponentProps<typeof SelectPrimitive.Value>)
 }
 
 type SelectTriggerProps = ComponentProps<typeof SelectPrimitive.Trigger> & {
+  loading?: boolean
   size?: 'default' | 'sm'
 }
 
-export const SelectTrigger = ({ children, className, size = 'default', ...props }: SelectTriggerProps) => {
+export const SelectTrigger = ({ children, className, disabled, loading = false, size = 'default', ...props }: SelectTriggerProps) => {
   return (
     <SelectPrimitive.Trigger
+      aria-busy={loading || undefined}
       className={cn(
         'flex w-full items-center justify-between gap-1.5 border border-transparent border-b-input bg-transparent px-0 py-2 text-sm whitespace-nowrap outline-none focus-visible:border-b-ring disabled:cursor-not-allowed disabled:opacity-50 data-placeholder:text-muted-foreground',
         size === 'default' ? 'h-10' : 'h-9',
@@ -26,12 +28,16 @@ export const SelectTrigger = ({ children, className, size = 'default', ...props 
       )}
       data-size={size}
       data-slot="select-trigger"
+      disabled={disabled || loading}
       {...props}
     >
       {children}
-      <SelectPrimitive.Icon asChild>
-        <ChevronDownIcon className="size-3.5 text-muted-foreground" />
-      </SelectPrimitive.Icon>
+      {loading && <LoaderCircle aria-hidden className="size-3.5 animate-spin text-muted-foreground" />}
+      {!loading && (
+        <SelectPrimitive.Icon asChild>
+          <ChevronDownIcon className="size-3.5 text-muted-foreground" />
+        </SelectPrimitive.Icon>
+      )}
     </SelectPrimitive.Trigger>
   )
 }

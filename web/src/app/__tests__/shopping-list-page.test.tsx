@@ -258,6 +258,30 @@ describe('ShoppingListPage', () => {
     expect(screen.getAllByText('Produce')).toHaveLength(1)
   })
 
+  it('shows a pending state while toggling an item', async () => {
+    const user = userEvent.setup()
+    let resolveToggle!: (value: typeof shoppingListItem | PromiseLike<typeof shoppingListItem>) => void
+
+    apiMock.getShoppingList.mockResolvedValue({
+      groups: [{ category: null, items: [shoppingListItem] }],
+      items: [shoppingListItem],
+    })
+    apiMock.toggleShoppingListItem.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveToggle = resolve
+    }))
+
+    renderWithProviders(<ShoppingListPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Toggle checked state' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Toggle checked state' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Toggle checked state' })).toHaveAttribute('aria-busy', 'true')
+    })
+
+    resolveToggle(shoppingListItem)
+  })
+
   it('toggles an item when clicking its card content', async () => {
     const user = userEvent.setup()
 

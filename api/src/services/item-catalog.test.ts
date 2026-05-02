@@ -141,6 +141,7 @@ describe('itemCatalogService', () => {
       orderedCategoryIds: ['category-3', 'category-1', 'category-2'],
       updatedAt: expect.any(Date),
     })
+    expect(repository.transaction).toHaveBeenCalledTimes(1)
   })
 
   it('blocks category deletion while items still use the category', async () => {

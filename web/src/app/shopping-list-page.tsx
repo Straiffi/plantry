@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Circle, Plus, Trash2 } from 'lucide-react'
+import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query'
+import { CheckCircle2, Circle, LoaderCircle, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { api, ApiError, type ShoppingListItem } from '@/lib/api'
@@ -18,7 +18,11 @@ type DraftEntry = {
 }
 
 type ShoppingListRowProps = {
+  isDecrementPending: boolean
+  isDeletePending: boolean
+  isIncrementPending: boolean
   item: ShoppingListItem
+  isTogglePending: boolean
   onDecrease: (item: ShoppingListItem) => void
   onDelete: (itemId: string) => void
   onIncrease: (item: ShoppingListItem) => void
@@ -56,19 +60,23 @@ const ShoppingListAddButton = ({ onClick }: ShoppingListAddButtonProps) => {
   )
 }
 
-const ShoppingListRow = ({ item, onDecrease, onDelete, onIncrease, onToggle }: ShoppingListRowProps) => {
+const ShoppingListRow = ({ isDecrementPending, isDeletePending, isIncrementPending, item, isTogglePending, onDecrease, onDelete, onIncrease, onToggle }: ShoppingListRowProps) => {
   const { t } = useTranslation()
+  const isRowPending = isDecrementPending || isDeletePending || isIncrementPending || isTogglePending
 
   return (
     <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/75 px-2.5 py-2.5 sm:gap-3 sm:px-3 sm:py-3">
       <button
         aria-label={t('shoppingList.toggleItem')}
-        className="flex min-w-0 flex-1 items-center gap-2 rounded-xl text-left outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30"
+        aria-busy={isTogglePending || undefined}
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-xl text-left outline-none transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring/30"
+        disabled={isRowPending}
         onClick={() => onToggle(item.id)}
         type="button"
       >
         <span className="inline-flex shrink-0 items-center justify-center">
-          {item.checked ? <CheckCircle2 className="size-5" /> : <Circle className="size-5" />}
+          {isTogglePending && <LoaderCircle aria-hidden className="size-5 animate-spin" />}
+          {!isTogglePending && (item.checked ? <CheckCircle2 className="size-5" /> : <Circle className="size-5" />)}
         </span>
 
         <div className="min-w-0 flex-1">
@@ -76,16 +84,22 @@ const ShoppingListRow = ({ item, onDecrease, onDelete, onIncrease, onToggle }: S
         </div>
       </button>
 
-      <QuantityStepper onChange={(quantity) => {
-        if (quantity < item.quantity) {
-          onDecrease(item)
-          return
-        }
+      <QuantityStepper
+        decrementLoading={isDecrementPending}
+        disabled={isRowPending}
+        incrementLoading={isIncrementPending}
+        onChange={(quantity) => {
+          if (quantity < item.quantity) {
+            onDecrease(item)
+            return
+          }
 
-        onIncrease(item)
-      }} value={item.quantity} />
+          onIncrease(item)
+        }}
+        value={item.quantity}
+      />
 
-      <Button aria-label={t('shoppingList.removeItem')} onClick={() => onDelete(item.id)} size="icon-sm" type="button" variant="ghost">
+      <Button aria-label={t('shoppingList.removeItem')} disabled={isRowPending} loading={isDeletePending} onClick={() => onDelete(item.id)} size="icon-sm" type="button" variant="ghost">
         <Trash2 className="size-4" />
       </Button>
     </div>
@@ -100,6 +114,7 @@ const ShoppingListDraftRow = ({ disabled, draftEntry, onClose, onQuantityChange,
       <ProductPickerField
         autoFocus
         disabled={disabled}
+        loading={disabled}
         onSelectionChange={onSelectionChange}
         onValueChange={onValueChange}
         placeholder={t('shoppingList.itemPlaceholder')}
@@ -119,6 +134,7 @@ const ShoppingListDraftRow = ({ disabled, draftEntry, onClose, onQuantityChange,
 
 export const ShoppingListPage = () => {
   const { t } = useTranslation()
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [draftEntryVersion, setDraftEntryVersion] = useState(0)
   const queryClient = useQueryClient()
   const [draftEntry, setDraftEntry] = useState<DraftEntry | null>(null)
@@ -143,6 +159,7 @@ export const ShoppingListPage = () => {
   }
 
   const addItemMutation = useMutation({
+    mutationKey: ['shopping-list', 'add-item'],
     mutationFn: (input: { itemId?: string; name?: string; quantity: number }) => api.addShoppingListItem(input),
     onSuccess: async () => {
       setDraftEntry(createDraftEntry())
@@ -151,20 +168,40 @@ export const ShoppingListPage = () => {
     },
   })
   const toggleItemMutation = useMutation({
+    mutationKey: ['shopping-list', 'toggle-item'],
     mutationFn: (shoppingListItemId: string) => api.toggleShoppingListItem(shoppingListItemId),
     onSuccess: refreshShoppingList,
   })
   const updateItemMutation = useMutation({
+    mutationKey: ['shopping-list', 'update-item'],
     mutationFn: ({ shoppingListItemId, quantity }: { quantity: number; shoppingListItemId: string }) => api.updateShoppingListItem(shoppingListItemId, quantity),
     onSuccess: refreshShoppingList,
   })
   const deleteCheckedMutation = useMutation({
+    mutationKey: ['shopping-list', 'delete-checked'],
     mutationFn: api.deleteCheckedShoppingListItems,
-    onSuccess: refreshShoppingList,
+    onSuccess: async () => {
+      setIsDeleteDialogOpen(false)
+      await refreshShoppingList()
+    },
   })
   const deleteItemMutation = useMutation({
+    mutationKey: ['shopping-list', 'delete-item'],
     mutationFn: (shoppingListItemId: string) => api.deleteShoppingListItem(shoppingListItemId),
     onSuccess: refreshShoppingList,
+  })
+
+  const pendingToggledItemIds = useMutationState({
+    filters: { mutationKey: ['shopping-list', 'toggle-item'], status: 'pending' },
+    select: (mutation) => mutation.state.variables as string,
+  })
+  const pendingDeletedItemIds = useMutationState({
+    filters: { mutationKey: ['shopping-list', 'delete-item'], status: 'pending' },
+    select: (mutation) => mutation.state.variables as string,
+  })
+  const pendingUpdatedItems = useMutationState({
+    filters: { mutationKey: ['shopping-list', 'update-item'], status: 'pending' },
+    select: (mutation) => mutation.state.variables as { quantity: number; shoppingListItemId: string },
   })
 
   const handleOpenDraftEntry = () => {
@@ -221,7 +258,7 @@ export const ShoppingListPage = () => {
     <div className="space-y-8">
       <PageHeader
         actions={
-          <Dialog>
+          <Dialog onOpenChange={setIsDeleteDialogOpen} open={isDeleteDialogOpen}>
             <DialogTrigger asChild>
               <Button disabled={checkedCount === 0 || deleteCheckedMutation.isPending} variant="outline">
                 {t('shoppingList.deleteChecked')}
@@ -233,13 +270,11 @@ export const ShoppingListPage = () => {
                 <DialogDescription>{t('shoppingList.deleteCheckedDescription')}</DialogDescription>
               </DialogHeader>
               <DialogFooter>
+                <Button loading={deleteCheckedMutation.isPending} onClick={() => deleteCheckedMutation.mutate(undefined, { onError: handleMutationError })} type="button" variant="destructive">
+                  {t('shoppingList.deleteCheckedConfirm')}
+                </Button>
                 <DialogClose asChild>
-                  <Button onClick={() => deleteCheckedMutation.mutate(undefined, { onError: handleMutationError })} type="button" variant="destructive">
-                    {t('shoppingList.deleteCheckedConfirm')}
-                  </Button>
-                </DialogClose>
-                <DialogClose asChild>
-                  <Button type="button" variant="outline">{t('shoppingList.cancel')}</Button>
+                  <Button disabled={deleteCheckedMutation.isPending} type="button" variant="outline">{t('shoppingList.cancel')}</Button>
                 </DialogClose>
               </DialogFooter>
             </DialogContent>
@@ -272,8 +307,11 @@ export const ShoppingListPage = () => {
             <CardContent className="space-y-4 p-3 sm:space-y-6 sm:p-6">
               {shoppingList.items.map((item, index) => {
                 const previousItem = shoppingList.items[index - 1]
+                const pendingUpdate = pendingUpdatedItems.find((pendingItem) => pendingItem.shoppingListItemId === item.id)
                 const previousCategoryId = previousItem?.item.category?.id ?? null
                 const currentCategoryId = item.item.category?.id ?? null
+                const isDecrementPending = pendingUpdate?.quantity === item.quantity - 1
+                const isIncrementPending = pendingUpdate?.quantity === item.quantity + 1
                 const shouldShowCategoryHeading = index === 0 || currentCategoryId !== previousCategoryId
 
                 return (
@@ -288,7 +326,11 @@ export const ShoppingListPage = () => {
 
                     <div className="space-y-2 sm:space-y-3">
                       <ShoppingListRow
+                        isDecrementPending={Boolean(isDecrementPending)}
+                        isDeletePending={pendingDeletedItemIds.includes(item.id)}
+                        isIncrementPending={Boolean(isIncrementPending)}
                         item={item}
+                        isTogglePending={pendingToggledItemIds.includes(item.id)}
                         onDecrease={(currentItem) => updateItemMutation.mutate({
                           quantity: Math.max(1, currentItem.quantity - 1),
                           shoppingListItemId: currentItem.id,

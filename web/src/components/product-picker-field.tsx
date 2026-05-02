@@ -1,6 +1,6 @@
 import { useDeferredValue, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search } from 'lucide-react'
+import { LoaderCircle, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { api, type Product } from '@/lib/api'
@@ -18,13 +18,14 @@ type Props = {
   autoFocus?: boolean
   disabled: boolean
   instanceKey?: string
+  loading?: boolean
   onSelectionChange: (selection: ProductSelection) => void
   onValueChange: (value: string) => void
   placeholder: string
   value: string
 }
 
-export const ProductPickerField = ({ autoFocus = false, disabled, instanceKey, onSelectionChange, onValueChange, placeholder, value }: Props) => {
+export const ProductPickerField = ({ autoFocus = false, disabled, instanceKey, loading = false, onSelectionChange, onValueChange, placeholder, value }: Props) => {
   const { t } = useTranslation()
   const deferredValue = useDeferredValue(value)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -79,9 +80,11 @@ export const ProductPickerField = ({ autoFocus = false, disabled, instanceKey, o
   return (
     <div className="relative min-w-0 flex-1" ref={containerRef}>
       <Search className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
+      {loading && <LoaderCircle aria-hidden className="pointer-events-none absolute right-3 top-1/2 z-10 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
       <Input
         autoFocus={autoFocus}
-        className="pl-9"
+        aria-busy={loading || undefined}
+        className={loading ? 'pl-9 pr-9' : 'pl-9'}
         disabled={disabled}
         key={instanceKey}
         onBlur={handleBlur}

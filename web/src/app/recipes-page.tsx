@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, Plus, Send, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -22,6 +22,9 @@ const recipeDateFormatter = new Intl.DateTimeFormat(undefined, {
 type SortValue = 'menu-date-asc' | 'menu-date-desc' | 'name-asc' | 'name-desc'
 
 type RecipeSummaryCardProps = {
+  isAddToMenuPending: boolean
+  isAddToShoppingListPending: boolean
+  isDeletePending: boolean
   isExpanded: boolean
   onAddToMenu: (recipeId: string) => void
   onAddToShoppingList: (recipeId: string) => void
@@ -91,7 +94,7 @@ const sortRecipes = (recipes: Recipe[], sortValue: SortValue) => {
   })
 }
 
-const RecipeSummaryCard = ({ isExpanded, onAddToMenu, onAddToShoppingList, onDelete, onToggle, recipe }: RecipeSummaryCardProps) => {
+const RecipeSummaryCard = ({ isAddToMenuPending, isAddToShoppingListPending, isDeletePending, isExpanded, onAddToMenu, onAddToShoppingList, onDelete, onToggle, recipe }: RecipeSummaryCardProps) => {
   const { t } = useTranslation()
   const lastAddedLabel = getRecipeSortLabel(recipe, t)
   const previewText = recipe.notes ?? t('recipes.noNotes')
@@ -117,7 +120,7 @@ const RecipeSummaryCard = ({ isExpanded, onAddToMenu, onAddToShoppingList, onDel
             <Badge variant="outline">{t('recipes.itemCount', { count: recipe.items.length })}</Badge>
             <ChevronDown className={`size-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
           </div>
-          <Button onClick={() => onAddToMenu(recipe.id)} size="xs" type="button" variant="secondary">
+          <Button loading={isAddToMenuPending} onClick={() => onAddToMenu(recipe.id)} size="xs" type="button" variant="secondary">
             <span>{t('recipes.addToMenu')}</span>
           </Button>
         </div>
@@ -137,11 +140,11 @@ const RecipeSummaryCard = ({ isExpanded, onAddToMenu, onAddToShoppingList, onDel
             <Button asChild variant="outline">
               <Link params={{ recipeId: recipe.id }} to="/recipes/$recipeId">{t('recipes.openRecipe')}</Link>
             </Button>
-            <Button onClick={() => onAddToShoppingList(recipe.id)} type="button">
+            <Button loading={isAddToShoppingListPending} onClick={() => onAddToShoppingList(recipe.id)} type="button">
               <Send className="size-4" />
               <span>{t('recipes.addToShoppingList')}</span>
             </Button>
-            <Button onClick={() => onDelete(recipe.id)} type="button" variant="ghost">
+            <Button loading={isDeletePending} onClick={() => onDelete(recipe.id)} type="button" variant="ghost">
               <Trash2 className="size-4" />
               <span>{t('recipes.deleteRecipe')}</span>
             </Button>
@@ -188,6 +191,7 @@ export const RecipesPage = () => {
   }
 
   const createRecipeMutation = useMutation({
+    mutationKey: ['recipes', 'create-recipe'],
     mutationFn: () => api.createRecipe({
       items: items.filter((item) => item.name.trim()).map((item, index) => ({
         itemId: item.itemId,
@@ -208,19 +212,35 @@ export const RecipesPage = () => {
     },
   })
   const addRecipeToMenuMutation = useMutation({
+    mutationKey: ['recipes', 'add-to-menu'],
     mutationFn: (recipeId: string) => api.addRecipeToMenu(recipeId),
     onSuccess: refreshRecipes,
   })
   const addRecipeToShoppingListMutation = useMutation({
+    mutationKey: ['recipes', 'add-to-shopping-list'],
     mutationFn: (recipeId: string) => api.addRecipeToShoppingList(recipeId),
     onSuccess: refreshRecipes,
   })
   const deleteRecipeMutation = useMutation({
+    mutationKey: ['recipes', 'delete-recipe'],
     mutationFn: (recipeId: string) => api.deleteRecipe(recipeId),
     onSuccess: async () => {
       setExpandedRecipeId(null)
       await refreshRecipes()
     },
+  })
+
+  const pendingAddToMenuRecipeIds = useMutationState({
+    filters: { mutationKey: ['recipes', 'add-to-menu'], status: 'pending' },
+    select: (mutation) => mutation.state.variables as string,
+  })
+  const pendingAddToShoppingListRecipeIds = useMutationState({
+    filters: { mutationKey: ['recipes', 'add-to-shopping-list'], status: 'pending' },
+    select: (mutation) => mutation.state.variables as string,
+  })
+  const pendingDeletedRecipeIds = useMutationState({
+    filters: { mutationKey: ['recipes', 'delete-recipe'], status: 'pending' },
+    select: (mutation) => mutation.state.variables as string,
   })
 
   if (recipesQuery.isPending) {
@@ -298,7 +318,7 @@ export const RecipesPage = () => {
                   <Plus className="size-4" />
                   <span>{t('recipes.addItemRow')}</span>
                 </Button>
-                <Button disabled={createRecipeMutation.isPending} onClick={() => createRecipeMutation.mutate(undefined, { onError: handleMutationError })} type="button">
+                <Button loading={createRecipeMutation.isPending} onClick={() => createRecipeMutation.mutate(undefined, { onError: handleMutationError })} type="button">
                   {t('recipes.createRecipe')}
                 </Button>
               </div>
@@ -314,6 +334,9 @@ export const RecipesPage = () => {
 
         {recipes.map((recipe) => (
           <RecipeSummaryCard
+            isAddToMenuPending={pendingAddToMenuRecipeIds.includes(recipe.id)}
+            isAddToShoppingListPending={pendingAddToShoppingListRecipeIds.includes(recipe.id)}
+            isDeletePending={pendingDeletedRecipeIds.includes(recipe.id)}
             isExpanded={expandedRecipeId === recipe.id}
             key={recipe.id}
             onAddToMenu={(recipeId) => addRecipeToMenuMutation.mutate(recipeId, { onError: handleMutationError })}
