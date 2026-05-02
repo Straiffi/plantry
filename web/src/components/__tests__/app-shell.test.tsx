@@ -23,8 +23,8 @@ vi.mock('@tanstack/react-router', async () => {
 })
 
 describe('AppShell', () => {
-  it('renders localized app navigation labels', () => {
-    renderWithProviders(
+  it('renders localized app navigation labels without profile details in the shell chrome', () => {
+    const { container } = renderWithProviders(
       <AppContext.Provider value={{
         household: {
           createdAt: '2026-01-01T00:00:00.000Z',
@@ -62,8 +62,11 @@ describe('AppShell', () => {
     expect(screen.getAllByRole('link', { name: 'Shopping List' })).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: 'Products' })).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: 'Settings' })).toHaveLength(2)
+    expect(screen.queryByText('Home Kitchen')).not.toBeInTheDocument()
+    expect(screen.queryByText('Chef User')).not.toBeInTheDocument()
     expect(screen.queryByText('owner')).not.toBeInTheDocument()
     expect(screen.queryByText('owner member')).not.toBeInTheDocument()
     expect(screen.queryByText('Move between groceries, recipes, products, and settings without losing the shared household context.')).not.toBeInTheDocument()
+    expect(container.querySelector('header')).not.toHaveClass('sticky', 'top-0')
   })
 })

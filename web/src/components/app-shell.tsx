@@ -3,8 +3,6 @@ import { BookOpen, CookingPot, Package2, Settings2, ShoppingBasket } from 'lucid
 import type { ComponentType, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useAppContext } from '@/app/app-context'
-import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -51,7 +49,6 @@ const NavItem = ({ isActive, section }: NavItemProps) => {
 export const AppShell = ({ children }: Props) => {
   const { t } = useTranslation()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
-  const { household, user } = useAppContext()
 
   return (
     <div className="min-h-svh bg-background">
@@ -60,13 +57,6 @@ export const AppShell = ({ children }: Props) => {
           <p className="px-2 text-sm font-medium text-primary">{t('app.name')}</p>
 
           <div className="rounded-3xl border border-border/60 bg-card p-4">
-            <div className="mb-4 flex items-center justify-between gap-3 px-2">
-              <div>
-                <p className="text-sm font-semibold text-foreground">{household?.name ?? t('shell.noHousehold')}</p>
-              </div>
-              <Badge variant="outline">{user.name}</Badge>
-            </div>
-
             <nav className="space-y-2">
               {navSections.map((section) => (
                 <NavItem isActive={pathname.startsWith(section.href)} key={section.href} section={section} />
@@ -76,12 +66,9 @@ export const AppShell = ({ children }: Props) => {
         </aside>
 
         <div className="flex min-h-svh flex-1 flex-col">
-          <header className="sticky top-0 z-20 border-b border-border/60 bg-background lg:hidden">
+          <header className="border-b border-border/60 bg-background lg:hidden">
             <div className="flex items-center justify-between px-4 py-4 sm:px-6">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-primary">{t('app.name')}</p>
-                <p className="text-sm text-muted-foreground">{household?.name ?? t('shell.noHousehold')}</p>
-              </div>
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-primary">{t('app.name')}</p>
             </div>
           </header>
 
