@@ -152,6 +152,7 @@ const RecipeSummaryCard = ({ isExpanded, onAddToMenu, onAddToShoppingList, onDel
 
 export const RecipesPage = () => {
   const { t } = useTranslation()
+  const [autoFocusItemId, setAutoFocusItemId] = useState<string | null>(null)
   const [expandedRecipeId, setExpandedRecipeId] = useState<string | null>(null)
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false)
   const [sortValue, setSortValue] = useState<SortValue>('name-asc')
@@ -196,6 +197,7 @@ export const RecipesPage = () => {
       notes,
     }),
     onSuccess: async () => {
+      setAutoFocusItemId(null)
       setName('')
       setNotes('')
       setItems([createDraftItem()])
@@ -221,6 +223,25 @@ export const RecipesPage = () => {
 
   if (recipesQuery.isPending) {
     return <RecipesPageSkeleton title={t('recipes.title')} />
+  }
+
+  const handleRecipeItemChange = (itemId: string, nextItem: RecipeDraftItem) => {
+    setItems((currentItems) => currentItems.map((currentItem) => currentItem.id === itemId ? nextItem : currentItem))
+  }
+
+  const handleRecipeItemSelectionCommitted = (itemId: string, nextItem: RecipeDraftItem, isLastItem: boolean) => {
+    const appendedItem = isLastItem ? createDraftItem() : null
+
+    setItems((currentItems) => {
+      const updatedItems = currentItems.map((currentItem) => currentItem.id === itemId ? nextItem : currentItem)
+
+      if (!appendedItem) {
+        return updatedItems
+      }
+
+      return [...updatedItems, appendedItem]
+    })
+    setAutoFocusItemId(appendedItem?.id ?? null)
   }
 
   const recipes = sortRecipes(recipesQuery.data ?? [], sortValue)
@@ -261,10 +282,12 @@ export const RecipesPage = () => {
               <div className="space-y-3">
                 {items.map((item) => (
                   <RecipeItemEditor
+                    autoFocus={item.id === autoFocusItemId}
                     item={item}
                     key={item.id}
-                    onChange={(nextItem) => setItems((currentItems) => currentItems.map((currentItem) => currentItem.id === item.id ? nextItem : currentItem))}
+                    onChange={(nextItem) => handleRecipeItemChange(item.id, nextItem)}
                     onRemove={() => setItems((currentItems) => currentItems.length === 1 ? currentItems : currentItems.filter((currentItem) => currentItem.id !== item.id))}
+                    onSelectionCommitted={(nextItem) => handleRecipeItemSelectionCommitted(item.id, nextItem, item.id === items[items.length - 1]?.id)}
                   />
                 ))}
               </div>

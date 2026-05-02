@@ -151,6 +151,59 @@ describe('RecipesPage', () => {
     expect(screen.getByRole('button', { name: '-' })).toBeInTheDocument()
   })
 
+  it('adds a fresh focused row after selecting an existing product in the last recipe row', async () => {
+    const user = userEvent.setup()
+
+    apiMock.searchProducts.mockResolvedValue([
+      {
+        archivedAt: null,
+        category: null,
+        categoryId: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        createdByUserId: 'user-1',
+        householdId: 'household-1',
+        id: 'item-1',
+        name: 'Tomato',
+        normalizedName: 'tomato',
+        tags: [],
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ])
+
+    renderWithProviders(<RecipesPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Add recipe' }))
+    await user.type(screen.getByPlaceholderText('Search or type a product name'), 'Tomato')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      const productInputs = screen.getAllByPlaceholderText('Search or type a product name')
+
+      expect(productInputs).toHaveLength(2)
+      expect(productInputs[1]).toHaveValue('')
+      expect(productInputs[1]).toHaveFocus()
+    })
+  })
+
+  it('adds a fresh focused row after creating a new product from the last recipe row', async () => {
+    const user = userEvent.setup()
+
+    renderWithProviders(<RecipesPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Add recipe' }))
+    await user.type(screen.getByPlaceholderText('Search or type a product name'), 'Paprika')
+    await user.click(await screen.findByRole('button', { name: 'Create product "Paprika"' }))
+
+    await waitFor(() => {
+      const productInputs = screen.getAllByPlaceholderText('Search or type a product name')
+
+      expect(productInputs).toHaveLength(2)
+      expect(productInputs[0]).toHaveValue('Paprika')
+      expect(productInputs[1]).toHaveValue('')
+      expect(productInputs[1]).toHaveFocus()
+    })
+  })
+
   it('keeps recipe actions hidden until the compact card is expanded', async () => {
     const user = userEvent.setup()
 
