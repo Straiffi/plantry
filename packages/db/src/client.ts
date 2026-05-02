@@ -1,8 +1,8 @@
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 
-import * as relationSchema from './relations'
-import * as tableSchema from './schema'
+import * as relationSchema from './relations.js'
+import * as tableSchema from './schema/index.js'
 
 declare global {
   // eslint-disable-next-line no-var

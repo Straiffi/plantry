@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { boolean, integer, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
-import { user } from './auth'
+import { user } from './auth.js'
 
 const createId = () => randomUUID()
 

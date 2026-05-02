@@ -14,7 +14,7 @@ import {
   shoppingListItems,
   user,
   verification,
-} from './schema'
+} from './schema/index.js'
 
 export const userRelations = relations(user, ({ many }) => ({
   accounts: many(account),
