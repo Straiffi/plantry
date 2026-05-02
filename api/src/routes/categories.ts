@@ -66,6 +66,44 @@ categoriesRoute.post('/', async (context) => {
   }
 })
 
+categoriesRoute.patch('/reorder', async (context) => {
+  const user = getAuthenticatedUser(context)
+
+  if (!user) {
+    return context.json({ message: 'Unauthorized' }, 401)
+  }
+
+  const currentHousehold = getCurrentHouseholdFromContext(context)
+
+  if (!currentHousehold) {
+    return context.json({ message: 'Household not found' }, 404)
+  }
+
+  const body = await readJsonBody(context)
+  const orderedCategoryIds = Array.isArray(body?.orderedCategoryIds)
+    ? body.orderedCategoryIds.filter((value): value is string => typeof value === 'string')
+    : null
+
+  if (!orderedCategoryIds || orderedCategoryIds.length === 0) {
+    return context.json({ message: 'orderedCategoryIds must be a non-empty array of category ids' }, 400)
+  }
+
+  try {
+    const categories = await itemCatalogService.reorderCategories({
+      householdId: currentHousehold.household.id,
+      orderedCategoryIds,
+    })
+
+    return context.json({ categories })
+  } catch (error) {
+    if (error instanceof ItemCatalogServiceError && error.code === 'CATEGORY_NOT_FOUND') {
+      return context.json({ message: error.message }, 404)
+    }
+
+    throw error
+  }
+})
+
 categoriesRoute.patch('/:id', async (context) => {
   const user = getAuthenticatedUser(context)
 

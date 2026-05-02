@@ -327,6 +327,8 @@ export const createRecipeService = (
       throw new RecipeServiceError('INVALID_INPUT', 'Recipe name is required')
     }
 
+    const resolvedRecipeItems = await resolveRecipeItems(repository, householdId, recipeItemInputs, userId)
+
     return repository.transaction(async (transactionRepository) => {
       const recipeRecord = await transactionRepository.insertRecipe({
         createdByUserId: userId,
@@ -334,7 +336,6 @@ export const createRecipeService = (
         name: normalizedName,
         notes: normalizeRecipeNotes(notes),
       })
-      const resolvedRecipeItems = await resolveRecipeItems(transactionRepository, householdId, recipeItemInputs, userId)
 
       for (const resolvedRecipeItem of resolvedRecipeItems) {
         await transactionRepository.insertRecipeItem({
@@ -370,6 +371,10 @@ export const createRecipeService = (
       }
     }
 
+    const resolvedRecipeItems = recipeItemInputs === undefined
+      ? []
+      : await resolveRecipeItems(repository, householdId, recipeItemInputs, userId)
+
     return repository.transaction(async (transactionRepository) => {
       const updatedRecipe = await transactionRepository.updateRecipe({
         householdId,
@@ -384,8 +389,6 @@ export const createRecipeService = (
       }
 
       if (recipeItemInputs !== undefined) {
-        const resolvedRecipeItems = await resolveRecipeItems(transactionRepository, householdId, recipeItemInputs, userId)
-
         await transactionRepository.deleteRecipeItems(recipeId)
 
         for (const resolvedRecipeItem of resolvedRecipeItems) {

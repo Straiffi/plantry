@@ -1,6 +1,7 @@
 import { Outlet, createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
 
 import { AuthenticatedLayout } from '@/app/authenticated-layout'
+import { IndexPage } from '@/app/index-page'
 import { LoginPage } from '@/app/login-page'
 import { ProductsPage } from '@/app/products-page'
 import { RecipeDetailPage } from '@/app/recipe-detail-page'
@@ -21,6 +22,12 @@ const loginRoute = createRoute({
 const appRoute = createRoute({
   component: AuthenticatedLayout,
   getParentRoute: () => rootRoute,
+  id: 'app',
+})
+
+const indexRoute = createRoute({
+  component: IndexPage,
+  getParentRoute: () => appRoute,
   path: '/',
 })
 
@@ -57,6 +64,7 @@ const settingsRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   loginRoute,
   appRoute.addChildren([
+    indexRoute,
     shoppingListRoute,
     productsRoute,
     recipesRoute,

@@ -1,10 +1,11 @@
-import { Navigate, Outlet, useRouterState } from '@tanstack/react-router'
+import { Navigate, Outlet } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
 import { api } from '@/lib/api'
 import { authClient } from '@/lib/auth-client'
 import { AppContext } from '@/app/app-context'
+import { HouseholdSetupPage } from '@/app/household-setup-page'
 import { LoadingPage } from '@/app/loading-page'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
@@ -12,7 +13,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 export const AuthenticatedLayout = () => {
   const { t } = useTranslation()
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
   const sessionState = authClient.useSession()
   const meQuery = useQuery({
     enabled: !!sessionState.data,
@@ -44,8 +44,8 @@ export const AuthenticatedLayout = () => {
     )
   }
 
-  if (pathname === '/') {
-    return <Navigate to="/shopping-list" />
+  if (!meQuery.data.household || !meQuery.data.householdMembership) {
+    return <HouseholdSetupPage />
   }
 
   return (

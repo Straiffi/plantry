@@ -59,7 +59,6 @@ export const AppShell = ({ children }: Props) => {
           <div className="rounded-3xl border border-border/60 bg-card p-6">
             <p className="text-sm font-medium text-primary">{t('app.name')}</p>
             <h1 className="mt-3 font-heading text-3xl tracking-tight text-foreground">{t('shell.title')}</h1>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">{t('shell.description')}</p>
           </div>
 
           <div className="rounded-3xl border border-border/60 bg-card p-4">

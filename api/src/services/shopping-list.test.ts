@@ -118,7 +118,30 @@ describe('shoppingListService', () => {
 
     expect(result.groups).toHaveLength(2)
     expect(result.groups[0]?.category?.name).toBe('Pantry')
-    expect(result.groups[1]?.items.map((item) => item.item.name)).toEqual(['Apple', 'Tomato'])
+    expect(result.groups[1]?.items.map((item) => item.item.name)).toEqual(['Tomato', 'Apple'])
+  })
+
+  it('keeps unchecked shopping list items in created order instead of alphabetical order', async () => {
+    const repository = createRepositoryMock()
+    const service = createShoppingListService(repository)
+
+    repository.listShoppingListItems.mockResolvedValue([
+      createShoppingListItem({
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        id: 'list-item-1',
+        item: createItem({ id: 'item-1', name: 'Zucchini' }),
+      }),
+      createShoppingListItem({
+        createdAt: new Date('2026-01-02T00:00:00.000Z'),
+        id: 'list-item-2',
+        item: createItem({ id: 'item-2', name: 'Apple' }),
+        itemId: 'item-2',
+      }),
+    ])
+
+    const result = await service.getShoppingList('household-1')
+
+    expect(result.items.map((item) => item.item.name)).toEqual(['Zucchini', 'Apple'])
   })
 
   it('adds quantities onto an existing shopping list row and clears checked state', async () => {
@@ -151,6 +174,38 @@ describe('shoppingListService', () => {
       householdId: 'household-1',
       quantity: 5,
     }))
+  })
+
+  it('unarchives an explicitly selected archived item before adding it to the shopping list', async () => {
+    const repository = createRepositoryMock()
+    const service = createShoppingListService(repository)
+    const createdListItem = createShoppingListItem({
+      id: 'list-item-2',
+      item: createItem({ archivedAt: null, id: 'item-2', name: 'Pasta' }),
+      itemId: 'item-2',
+      quantity: 2,
+    })
+
+    repository.findItemById.mockResolvedValue(createItem({ archivedAt: new Date('2026-01-03T00:00:00.000Z'), id: 'item-2', name: 'Pasta' }))
+    repository.findShoppingListItemByItemId.mockResolvedValue(null)
+    repository.insertShoppingListItem.mockResolvedValue({
+      checked: false,
+      checkedAt: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      householdId: 'household-1',
+      id: 'list-item-2',
+      itemId: 'item-2',
+      quantity: 2,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    repository.findShoppingListItemById.mockResolvedValue(createdListItem)
+
+    await expect(service.addItemToShoppingList({ householdId: 'household-1', itemId: 'item-2', quantity: 2, userId: 'user-1' })).resolves.toMatchObject({
+      itemId: 'item-2',
+      quantity: 2,
+    })
+
+    expect(repository.updateItemArchivedAt).toHaveBeenCalledWith('household-1', 'item-2', null, expect.any(Date))
   })
 
   it('creates missing items from free text before adding them to the shopping list', async () => {
@@ -191,6 +246,7 @@ describe('shoppingListService', () => {
       name: ' Pasta ',
       userId: 'user-1',
     })
+    expect(findOrCreateItem.mock.invocationCallOrder[0]).toBeLessThan(repository.transaction.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY)
   })
 
   it('rejects invalid shopping list quantities', async () => {

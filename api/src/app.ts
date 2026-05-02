@@ -31,7 +31,7 @@ app.use('*', authSessionMiddleware)
 
 app.get('/', (context) => {
   return context.json({
-    message: 'Recipe App API phase 6 recipe foundation is ready',
+    message: 'Recipe App API is ready',
     status: 'ok',
   })
 })

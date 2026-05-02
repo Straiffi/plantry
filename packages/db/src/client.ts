@@ -1,7 +1,8 @@
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 
-import * as schema from './schema'
+import * as relationSchema from './relations'
+import * as tableSchema from './schema'
 
 declare global {
   // eslint-disable-next-line no-var
@@ -14,6 +15,11 @@ const client = globalThis.__recipeAppSql__ ?? postgres(connectionString, {
   max: 1,
   prepare: false,
 })
+
+const schema = {
+  ...tableSchema,
+  ...relationSchema,
+}
 
 if (process.env.NODE_ENV !== 'production') {
   globalThis.__recipeAppSql__ = client

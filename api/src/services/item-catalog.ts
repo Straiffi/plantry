@@ -62,6 +62,11 @@ type SearchItemsInput = {
   query: string
 }
 
+type ReorderCategoriesInput = {
+  householdId: string
+  orderedCategoryIds: string[]
+}
+
 type ItemCatalogRepository = {
   categoryHasItems: (categoryId: string) => Promise<boolean>
   deleteCategory: (categoryId: string, householdId: string) => Promise<boolean>
@@ -80,6 +85,7 @@ type ItemCatalogRepository = {
   insertItemTag: (input: { itemId: string; tag: string }) => Promise<ItemTag>
   listCategories: (householdId: string) => Promise<ItemCategory[]>
   listItems: (householdId: string, includeArchived: boolean) => Promise<ItemWithRelations[]>
+  reorderCategories: (input: { householdId: string; orderedCategoryIds: string[]; updatedAt: Date }) => Promise<void>
   searchItems: (householdId: string, normalizedQuery: string, limit: number) => Promise<ItemWithRelations[]>
   transaction: <T>(callback: (repository: ItemCatalogRepository) => Promise<T>) => Promise<T>
   updateCategory: (input: {
@@ -254,6 +260,17 @@ export const createItemCatalogRepository = (database: DatabaseLike = db): ItemCa
         },
       })
     },
+    reorderCategories: async ({ householdId, orderedCategoryIds, updatedAt }) => {
+      await Promise.all(orderedCategoryIds.map((categoryId, index) => {
+        return database
+          .update(itemCategories)
+          .set({
+            sortOrder: index + 1,
+            updatedAt,
+          })
+          .where(and(eq(itemCategories.id, categoryId), eq(itemCategories.householdId, householdId)))
+      }))
+    },
     searchItems: async (householdId, normalizedQuery, limit) => {
       return database.query.items.findMany({
         limit,
@@ -317,11 +334,14 @@ export const createItemCatalogService = (repository: ItemCatalogRepository = cre
       throw new ItemCatalogServiceError('INVALID_NAME', 'Category name is required')
     }
 
+    const existingCategories = await repository.listCategories(householdId)
+    const nextSortOrder = sortOrder > 0 ? sortOrder : existingCategories.length + 1
+
     try {
       return repository.insertCategory({
         householdId,
         name: normalizedName,
-        sortOrder,
+        sortOrder: nextSortOrder,
       })
     } catch (error) {
       if (isUniqueViolation(error)) {
@@ -380,6 +400,30 @@ export const createItemCatalogService = (repository: ItemCatalogRepository = cre
     }
 
     await repository.deleteCategory(categoryId, householdId)
+  }
+
+  const reorderCategories = async ({ householdId, orderedCategoryIds }: ReorderCategoriesInput) => {
+    const categories = await repository.listCategories(householdId)
+
+    if (orderedCategoryIds.length !== categories.length) {
+      throw new ItemCatalogServiceError('CATEGORY_NOT_FOUND', 'Category not found')
+    }
+
+    const categoryIds = new Set(categories.map((category) => category.id))
+
+    for (const categoryId of orderedCategoryIds) {
+      if (!categoryIds.has(categoryId)) {
+        throw new ItemCatalogServiceError('CATEGORY_NOT_FOUND', 'Category not found')
+      }
+    }
+
+    await repository.reorderCategories({
+      householdId,
+      orderedCategoryIds,
+      updatedAt: new Date(),
+    })
+
+    return repository.listCategories(householdId)
   }
 
   const assertValidCategory = async (
@@ -652,6 +696,7 @@ export const createItemCatalogService = (repository: ItemCatalogRepository = cre
     findOrCreateItem,
     listCategories,
     listItems,
+    reorderCategories,
     restoreItem,
     searchItems,
     updateCategory,

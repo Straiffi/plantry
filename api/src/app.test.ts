@@ -7,6 +7,12 @@ import { ItemCatalogServiceError, itemCatalogService } from './services/item-cat
 import { recipeService, RecipeServiceError } from './services/recipes.js'
 import { shoppingListService, ShoppingListServiceError } from './services/shopping-list.js'
 
+type ProtectedRouteCase = {
+  init?: RequestInit
+  method: string
+  path: string
+}
+
 const authenticatedSession = {
   session: {
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -106,6 +112,68 @@ const recipe = {
   name: 'Tomato Pasta',
 }
 
+const protectedRouteCases: ProtectedRouteCase[] = [
+  { method: 'GET', path: 'http://localhost/api/household' },
+  { method: 'GET', path: 'http://localhost/api/invite-codes' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/invite-codes' },
+  { method: 'GET', path: 'http://localhost/api/categories' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/categories' },
+  { init: { method: 'PATCH' }, method: 'PATCH', path: 'http://localhost/api/categories/reorder' },
+  { init: { method: 'PATCH' }, method: 'PATCH', path: 'http://localhost/api/categories/category-1' },
+  { init: { method: 'DELETE' }, method: 'DELETE', path: 'http://localhost/api/categories/category-1' },
+  { method: 'GET', path: 'http://localhost/api/items' },
+  { method: 'GET', path: 'http://localhost/api/items/search?q=to&limit=5' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/items' },
+  { init: { method: 'PATCH' }, method: 'PATCH', path: 'http://localhost/api/items/item-1' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/items/item-1/archive' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/items/item-1/restore' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/items/item-1/tags' },
+  { init: { method: 'DELETE' }, method: 'DELETE', path: 'http://localhost/api/items/item-1/tags/fresh' },
+  { method: 'GET', path: 'http://localhost/api/shopping-list' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/shopping-list/items' },
+  { init: { method: 'PATCH' }, method: 'PATCH', path: 'http://localhost/api/shopping-list/items/shopping-list-item-1' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/shopping-list/items/shopping-list-item-1/toggle-checked' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/shopping-list/delete-checked' },
+  { init: { method: 'DELETE' }, method: 'DELETE', path: 'http://localhost/api/shopping-list/items/shopping-list-item-1' },
+  { method: 'GET', path: 'http://localhost/api/recipes' },
+  { method: 'GET', path: 'http://localhost/api/recipes/recipe-1' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/recipes' },
+  { init: { method: 'PATCH' }, method: 'PATCH', path: 'http://localhost/api/recipes/recipe-1' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/recipes/recipe-1/add-to-shopping-list' },
+  { init: { method: 'DELETE' }, method: 'DELETE', path: 'http://localhost/api/recipes/recipe-1' },
+]
+
+const householdScopedRouteCases: ProtectedRouteCase[] = [
+  { method: 'GET', path: 'http://localhost/api/household' },
+  { method: 'GET', path: 'http://localhost/api/invite-codes' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/invite-codes' },
+  { method: 'GET', path: 'http://localhost/api/categories' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/categories' },
+  { init: { method: 'PATCH' }, method: 'PATCH', path: 'http://localhost/api/categories/reorder' },
+  { init: { method: 'PATCH' }, method: 'PATCH', path: 'http://localhost/api/categories/category-1' },
+  { init: { method: 'DELETE' }, method: 'DELETE', path: 'http://localhost/api/categories/category-1' },
+  { method: 'GET', path: 'http://localhost/api/items' },
+  { method: 'GET', path: 'http://localhost/api/items/search?q=to&limit=5' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/items' },
+  { init: { method: 'PATCH' }, method: 'PATCH', path: 'http://localhost/api/items/item-1' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/items/item-1/archive' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/items/item-1/restore' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/items/item-1/tags' },
+  { init: { method: 'DELETE' }, method: 'DELETE', path: 'http://localhost/api/items/item-1/tags/fresh' },
+  { method: 'GET', path: 'http://localhost/api/shopping-list' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/shopping-list/items' },
+  { init: { method: 'PATCH' }, method: 'PATCH', path: 'http://localhost/api/shopping-list/items/shopping-list-item-1' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/shopping-list/items/shopping-list-item-1/toggle-checked' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/shopping-list/delete-checked' },
+  { init: { method: 'DELETE' }, method: 'DELETE', path: 'http://localhost/api/shopping-list/items/shopping-list-item-1' },
+  { method: 'GET', path: 'http://localhost/api/recipes' },
+  { method: 'GET', path: 'http://localhost/api/recipes/recipe-1' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/recipes' },
+  { init: { method: 'PATCH' }, method: 'PATCH', path: 'http://localhost/api/recipes/recipe-1' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/recipes/recipe-1/add-to-shopping-list' },
+  { init: { method: 'DELETE' }, method: 'DELETE', path: 'http://localhost/api/recipes/recipe-1' },
+]
+
 afterEach(() => {
   vi.restoreAllMocks()
 })
@@ -123,6 +191,15 @@ describe('app', () => {
 
   it('rejects unauthenticated requests to /api/me', async () => {
     const response = await app.request('http://localhost/api/me')
+
+    expect(response.status).toBe(401)
+    await expect(response.json()).resolves.toEqual({
+      message: 'Unauthorized',
+    })
+  })
+
+  it.each(protectedRouteCases)('rejects unauthenticated protected route $method $path', async ({ init, path }) => {
+    const response = await app.request(path, init)
 
     expect(response.status).toBe(401)
     await expect(response.json()).resolves.toEqual({
@@ -156,6 +233,37 @@ describe('app', () => {
         id: 'user-1',
         name: 'Test User',
       },
+    })
+  })
+
+  it('returns authenticated user details from /api/me even without a household yet', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(null)
+
+    const response = await app.request('http://localhost/api/me')
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      household: null,
+      householdMembership: null,
+      session: {
+        id: 'session-1',
+      },
+      user: {
+        id: 'user-1',
+      },
+    })
+  })
+
+  it.each(householdScopedRouteCases)('rejects household-scoped route $method $path when the user has no household', async ({ init, path }) => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(null)
+
+    const response = await app.request(path, init)
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({
+      message: 'Household not found',
     })
   })
 

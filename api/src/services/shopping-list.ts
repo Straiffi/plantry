@@ -128,11 +128,28 @@ const sortGroupedItems = (groups: ShoppingListGroup[]) => {
 
 const sortListItems = (itemsToSort: ShoppingListItemView[]) => {
   return [...itemsToSort].sort((left, right) => {
-    if (left.checked !== right.checked) {
-      return Number(left.checked) - Number(right.checked)
+    const leftCategory = left.item.category
+    const rightCategory = right.item.category
+
+    if (leftCategory === null && rightCategory !== null) {
+      return 1
     }
 
-    return left.item.name.localeCompare(right.item.name)
+    if (leftCategory !== null && rightCategory === null) {
+      return -1
+    }
+
+    if (leftCategory !== null && rightCategory !== null && leftCategory.sortOrder !== rightCategory.sortOrder) {
+      return leftCategory.sortOrder - rightCategory.sortOrder
+    }
+
+    const createdAtDifference = left.createdAt.getTime() - right.createdAt.getTime()
+
+    if (createdAtDifference !== 0) {
+      return createdAtDifference
+    }
+
+    return left.updatedAt.getTime() - right.updatedAt.getTime()
   })
 }
 
@@ -317,14 +334,15 @@ export const createShoppingListService = (
       throw new ShoppingListServiceError('INVALID_INPUT', 'Quantity must be a positive integer')
     }
 
+    const resolvedItemId = await resolveShoppingListItemId(repository, {
+      categoryId,
+      householdId,
+      itemId,
+      name,
+      userId,
+    })
+
     return repository.transaction(async (transactionRepository) => {
-      const resolvedItemId = await resolveShoppingListItemId(transactionRepository, {
-        categoryId,
-        householdId,
-        itemId,
-        name,
-        userId,
-      })
       const existingListItem = await transactionRepository.findShoppingListItemByItemId(householdId, resolvedItemId)
       const updatedAt = new Date()
 

@@ -3,18 +3,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Circle, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { api, ApiError, type Product, type ShoppingListGroup, type ShoppingListItem } from '@/lib/api'
-import { ItemAutocompleteField } from '@/components/item-autocomplete-field'
+import { api, ApiError, type ShoppingListItem } from '@/lib/api'
 import { PageHeader } from '@/components/page-header'
-import { Badge } from '@/components/ui/badge'
+import { ProductPickerField, type ProductSelection } from '@/components/product-picker-field'
+import { QuantityStepper } from '@/components/quantity-stepper'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 
 type DraftEntry = {
-  itemId?: string
   name: string
   quantity: number
 }
@@ -25,6 +22,37 @@ type ShoppingListRowProps = {
   onDelete: (itemId: string) => void
   onIncrease: (item: ShoppingListItem) => void
   onToggle: (itemId: string) => void
+}
+
+type ShoppingListAddButtonProps = {
+  onClick: () => void
+}
+
+type ShoppingListDraftRowProps = {
+  disabled: boolean
+  draftEntry: DraftEntry
+  onClose: () => void
+  onQuantityChange: (quantity: number) => void
+  onSelectionChange: (selection: ProductSelection) => void
+  onValueChange: (value: string) => void
+}
+
+const createDraftEntry = (): DraftEntry => {
+  return {
+    name: '',
+    quantity: 1,
+  }
+}
+
+const ShoppingListAddButton = ({ onClick }: ShoppingListAddButtonProps) => {
+  const { t } = useTranslation()
+
+  return (
+    <Button onClick={onClick} type="button" variant="outline">
+      <Plus className="size-4" />
+      <span>{t('shoppingList.addItem')}</span>
+    </Button>
+  )
 }
 
 const ShoppingListRow = ({ item, onDecrease, onDelete, onIncrease, onToggle }: ShoppingListRowProps) => {
@@ -41,15 +69,14 @@ const ShoppingListRow = ({ item, onDecrease, onDelete, onIncrease, onToggle }: S
         {item.item.category && <p className="text-xs text-muted-foreground">{item.item.category.name}</p>}
       </div>
 
-      <div className="flex items-center gap-2">
-        <Button disabled={item.quantity <= 1} onClick={() => onDecrease(item)} size="sm" type="button" variant="outline">
-          -
-        </Button>
-        <Badge variant="outline">{item.quantity}</Badge>
-        <Button onClick={() => onIncrease(item)} size="sm" type="button" variant="outline">
-          +
-        </Button>
-      </div>
+      <QuantityStepper onChange={(quantity) => {
+        if (quantity < item.quantity) {
+          onDecrease(item)
+          return
+        }
+
+        onIncrease(item)
+      }} value={item.quantity} />
 
       <Button aria-label={t('shoppingList.removeItem')} onClick={() => onDelete(item.id)} size="icon-sm" type="button" variant="ghost">
         <Trash2 className="size-4" />
@@ -58,10 +85,36 @@ const ShoppingListRow = ({ item, onDecrease, onDelete, onIncrease, onToggle }: S
   )
 }
 
+const ShoppingListDraftRow = ({ disabled, draftEntry, onClose, onQuantityChange, onSelectionChange, onValueChange }: ShoppingListDraftRowProps) => {
+  const { t } = useTranslation()
+
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-border/60 bg-background/75 px-3 py-3 sm:flex-row sm:items-start">
+      <ProductPickerField
+        autoFocus
+        disabled={disabled}
+        onSelectionChange={onSelectionChange}
+        onValueChange={onValueChange}
+        placeholder={t('shoppingList.itemPlaceholder')}
+        value={draftEntry.name}
+      />
+
+      <div className="self-end sm:self-center">
+        <QuantityStepper disabled={disabled} onChange={onQuantityChange} value={draftEntry.quantity} />
+      </div>
+
+      <Button aria-label={t('shoppingList.removeItem')} disabled={disabled} onClick={onClose} size="icon-sm" type="button" variant="ghost">
+        <Trash2 className="size-4" />
+      </Button>
+    </div>
+  )
+}
+
 export const ShoppingListPage = () => {
   const { t } = useTranslation()
+  const [draftEntryVersion, setDraftEntryVersion] = useState(0)
   const queryClient = useQueryClient()
-  const [draftEntry, setDraftEntry] = useState<DraftEntry>({ name: '', quantity: 1 })
+  const [draftEntry, setDraftEntry] = useState<DraftEntry | null>(null)
   const [pageError, setPageError] = useState<string | null>(null)
   const shoppingListQuery = useQuery({
     queryFn: api.getShoppingList,
@@ -83,13 +136,10 @@ export const ShoppingListPage = () => {
   }
 
   const addItemMutation = useMutation({
-    mutationFn: () => api.addShoppingListItem({
-      itemId: draftEntry.itemId,
-      name: draftEntry.itemId ? undefined : draftEntry.name,
-      quantity: draftEntry.quantity,
-    }),
+    mutationFn: (input: { itemId?: string; name?: string; quantity: number }) => api.addShoppingListItem(input),
     onSuccess: async () => {
-      setDraftEntry({ name: '', quantity: 1 })
+      setDraftEntry(createDraftEntry())
+      setDraftEntryVersion((currentValue) => currentValue + 1)
       await refreshShoppingList()
     },
   })
@@ -110,20 +160,36 @@ export const ShoppingListPage = () => {
     onSuccess: refreshShoppingList,
   })
 
-  const handleSuggestionSelect = (product: Product) => {
+  const handleOpenDraftEntry = () => {
+    setPageError(null)
+    setDraftEntry(createDraftEntry())
+    setDraftEntryVersion((currentValue) => currentValue + 1)
+  }
+
+  const handleDraftEntrySelection = (selection: ProductSelection) => {
+    if (!draftEntry) {
+      return
+    }
+
+    addItemMutation.mutate({
+      itemId: selection.type === 'existing' ? selection.product.id : undefined,
+      name: selection.type === 'create' ? selection.name : undefined,
+      quantity: draftEntry.quantity,
+    }, { onError: handleMutationError })
+  }
+
+  const handleDraftEntryNameChange = (value: string) => {
     setDraftEntry((currentValue) => ({
-      ...currentValue,
-      itemId: product.id,
-      name: product.name,
+      name: value,
+      quantity: currentValue?.quantity ?? 1,
     }))
   }
 
-  const handleNameChange = (value: string) => {
-    setDraftEntry((currentValue) => ({
+  const handleDraftEntryQuantityChange = (quantity: number) => {
+    setDraftEntry((currentValue) => currentValue ? {
       ...currentValue,
-      itemId: value === currentValue.name ? currentValue.itemId : undefined,
-      name: value,
-    }))
+      quantity,
+    } : currentValue)
   }
 
   if (shoppingListQuery.isPending) {
@@ -132,6 +198,17 @@ export const ShoppingListPage = () => {
 
   const shoppingList = shoppingListQuery.data ?? { groups: [], items: [] }
   const checkedCount = shoppingList.items.filter((item) => item.checked).length
+  const renderDraftRow = () => draftEntry ? (
+    <ShoppingListDraftRow
+      disabled={addItemMutation.isPending}
+      draftEntry={draftEntry}
+      key={draftEntryVersion}
+      onClose={() => setDraftEntry(null)}
+      onQuantityChange={handleDraftEntryQuantityChange}
+      onSelectionChange={handleDraftEntrySelection}
+      onValueChange={handleDraftEntryNameChange}
+    />
+  ) : null
 
   return (
     <div className="space-y-8">
@@ -161,7 +238,6 @@ export const ShoppingListPage = () => {
             </DialogContent>
           </Dialog>
         }
-        description={t('shoppingList.description')}
         title={t('shoppingList.title')}
       />
 
@@ -171,79 +247,61 @@ export const ShoppingListPage = () => {
         </Card>
       )}
 
-      <Card className="border-border/60 bg-card/90 shadow-[0_16px_48px_rgba(62,44,32,0.08)]">
-        <CardHeader>
-          <CardTitle>{t('shoppingList.quickAddTitle')}</CardTitle>
-          <CardDescription>{t('shoppingList.quickAddDescription')}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <ItemAutocompleteField
-            onChange={handleNameChange}
-            onSelectSuggestion={handleSuggestionSelect}
-            placeholder={t('shoppingList.itemPlaceholder')}
-            value={draftEntry.name}
-          />
-
-          <div className="grid gap-3 sm:grid-cols-[112px_auto]">
-            <div className="space-y-2">
-              <Label htmlFor="shopping-list-quantity">{t('shoppingList.quantityLabel')}</Label>
-              <Input
-                id="shopping-list-quantity"
-                min={1}
-                onChange={(event) => setDraftEntry((currentValue) => ({
-                  ...currentValue,
-                  quantity: Number.parseInt(event.target.value, 10) || 1,
-                }))}
-                type="number"
-                value={String(draftEntry.quantity)}
-              />
-            </div>
-            <Button
-              className="self-end"
-              disabled={addItemMutation.isPending || !draftEntry.name.trim()}
-              onClick={() => addItemMutation.mutate(undefined, { onError: handleMutationError })}
-              type="button"
-            >
-              <Plus className="size-4" />
-              <span>{t('shoppingList.addItem')}</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       <div className="space-y-5">
-        {shoppingList.groups.length === 0 && (
+        {shoppingList.items.length === 0 && !draftEntry && (
           <Card>
-            <CardContent className="p-6 text-sm text-muted-foreground">{t('shoppingList.empty')}</CardContent>
+            <CardContent className="space-y-4 p-6">
+              <p className="text-sm text-muted-foreground">{t('shoppingList.empty')}</p>
+              <ShoppingListAddButton onClick={handleOpenDraftEntry} />
+            </CardContent>
           </Card>
         )}
 
-        {shoppingList.groups.map((group: ShoppingListGroup, index: number) => (
-          <Card className="border-border/60 bg-card/90" key={group.category?.id ?? `uncategorized-${index}`}>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">{group.category?.name ?? t('shoppingList.uncategorized')}</CardTitle>
-              <CardDescription>{t('shoppingList.groupCount', { count: group.items.length })}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {group.items.map((item) => (
-                <ShoppingListRow
-                  item={item}
-                  key={item.id}
-                  onDecrease={(currentItem) => updateItemMutation.mutate({
-                    quantity: Math.max(1, currentItem.quantity - 1),
-                    shoppingListItemId: currentItem.id,
-                  }, { onError: handleMutationError })}
-                  onDelete={(shoppingListItemId) => deleteItemMutation.mutate(shoppingListItemId, { onError: handleMutationError })}
-                  onIncrease={(currentItem) => updateItemMutation.mutate({
-                    quantity: currentItem.quantity + 1,
-                    shoppingListItemId: currentItem.id,
-                  }, { onError: handleMutationError })}
-                  onToggle={(shoppingListItemId) => toggleItemMutation.mutate(shoppingListItemId, { onError: handleMutationError })}
-                />
-              ))}
+        {shoppingList.items.length === 0 && draftEntry && renderDraftRow()}
+
+        {shoppingList.items.length > 0 && (
+          <Card className="border-border/60 bg-card/90">
+            <CardContent className="space-y-6 p-4 sm:p-6">
+              {shoppingList.items.map((item, index) => {
+                const previousItem = shoppingList.items[index - 1]
+                const previousCategoryId = previousItem?.item.category?.id ?? null
+                const currentCategoryId = item.item.category?.id ?? null
+                const shouldShowCategoryHeading = index === 0 || currentCategoryId !== previousCategoryId
+
+                return (
+                  <section className="space-y-3" key={item.id}>
+                    {shouldShowCategoryHeading && (
+                      <div className="px-1">
+                        <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                          {item.item.category?.name ?? t('shoppingList.uncategorized')}
+                        </h2>
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      <ShoppingListRow
+                        item={item}
+                        onDecrease={(currentItem) => updateItemMutation.mutate({
+                          quantity: Math.max(1, currentItem.quantity - 1),
+                          shoppingListItemId: currentItem.id,
+                        }, { onError: handleMutationError })}
+                        onDelete={(shoppingListItemId) => deleteItemMutation.mutate(shoppingListItemId, { onError: handleMutationError })}
+                        onIncrease={(currentItem) => updateItemMutation.mutate({
+                          quantity: currentItem.quantity + 1,
+                          shoppingListItemId: currentItem.id,
+                        }, { onError: handleMutationError })}
+                        onToggle={(shoppingListItemId) => toggleItemMutation.mutate(shoppingListItemId, { onError: handleMutationError })}
+                      />
+                    </div>
+                  </section>
+                )
+              })}
+
+              {draftEntry && renderDraftRow()}
+              {!draftEntry && <ShoppingListAddButton onClick={handleOpenDraftEntry} />}
             </CardContent>
           </Card>
-        ))}
+        )}
       </div>
     </div>
   )

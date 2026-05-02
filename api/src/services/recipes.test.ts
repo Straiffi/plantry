@@ -197,6 +197,53 @@ describe('recipeService', () => {
       name: ' Basil ',
       userId: 'user-1',
     })
+    expect(findOrCreateItem.mock.invocationCallOrder[0]).toBeLessThan(repository.transaction.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY)
+  })
+
+  it('unarchives an explicitly selected archived item before saving recipe rows', async () => {
+    const repository = createRepositoryMock()
+    const service = createRecipeService(repository, {
+      addItemToShoppingList: vi.fn(),
+      findOrCreateItem: vi.fn(),
+    })
+    const recipeRecord = createRecipe({
+      recipeItems: [
+        createRecipeItem({
+          item: createItem({ archivedAt: null, id: 'item-2', name: 'Basil' }),
+          itemId: 'item-2',
+          quantity: 2,
+        }),
+      ],
+    })
+
+    repository.findItemById.mockResolvedValue(createItem({ archivedAt: new Date('2026-01-03T00:00:00.000Z'), id: 'item-2', name: 'Basil' }))
+    repository.insertRecipe.mockResolvedValue(recipeRecord)
+    repository.insertRecipeItem.mockResolvedValue({
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      id: 'recipe-item-2',
+      itemId: 'item-2',
+      quantity: 2,
+      recipeId: 'recipe-1',
+      sortOrder: 0,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    })
+    repository.findRecipeById.mockResolvedValue(recipeRecord)
+
+    await expect(service.createRecipe({
+      householdId: 'household-1',
+      items: [{ itemId: 'item-2', quantity: 2 }],
+      name: 'Pasta',
+      userId: 'user-1',
+    })).resolves.toMatchObject({
+      items: [
+        {
+          itemId: 'item-2',
+          quantity: 2,
+        },
+      ],
+    })
+
+    expect(repository.updateItemArchivedAt).toHaveBeenCalledWith('household-1', 'item-2', null, expect.any(Date))
   })
 
   it('rejects duplicate recipe items after resolution', async () => {

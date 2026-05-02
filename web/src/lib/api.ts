@@ -112,6 +112,11 @@ export type MeResponse = {
   }
 }
 
+type HouseholdSetupResponse = {
+  household: Household
+  membership: HouseholdMembership
+}
+
 type RecipeDraftItem = {
   categoryId?: string | null
   itemId?: string
@@ -191,13 +196,19 @@ export const api = {
 
     return response.item
   },
-  createCategory: async (name: string, sortOrder = 0) => {
+  createCategory: async (name: string, sortOrder?: number) => {
     const response = await request<{ category: Category }>('/categories', {
       body: JSON.stringify({ name, sortOrder }),
       method: 'POST',
     })
 
     return response.category
+  },
+  createHousehold: async (name: string) => {
+    return request<HouseholdSetupResponse>('/household/create', {
+      body: JSON.stringify({ name }),
+      method: 'POST',
+    })
   },
   createInviteCode: async () => {
     const response = await request<{ inviteCode: InviteCode }>('/invite-codes', {
@@ -278,12 +289,26 @@ export const api = {
   getShoppingList: async () => {
     return request<{ groups: ShoppingListGroup[]; items: ShoppingListItem[] }>('/shopping-list')
   },
+  joinHousehold: async (code: string) => {
+    return request<HouseholdSetupResponse>('/household/join', {
+      body: JSON.stringify({ code }),
+      method: 'POST',
+    })
+  },
   restoreProduct: async (itemId: string) => {
     const response = await request<{ item: Product }>(`/items/${itemId}/restore`, {
       method: 'POST',
     })
 
     return response.item
+  },
+  reorderCategories: async (orderedCategoryIds: string[]) => {
+    const response = await request<{ categories: Category[] }>('/categories/reorder', {
+      body: JSON.stringify({ orderedCategoryIds }),
+      method: 'PATCH',
+    })
+
+    return response.categories
   },
   searchProducts: async (query: string) => {
     const encodedQuery = encodeURIComponent(query)
@@ -294,6 +319,14 @@ export const api = {
   toggleShoppingListItem: async (shoppingListItemId: string) => {
     const response = await request<{ item: ShoppingListItem }>(`/shopping-list/items/${shoppingListItemId}/toggle-checked`, {
       method: 'POST',
+    })
+
+    return response.item
+  },
+  updateProduct: async (itemId: string, input: { categoryId?: string | null; name?: string }) => {
+    const response = await request<{ item: Product }>(`/items/${itemId}`, {
+      body: JSON.stringify(input),
+      method: 'PATCH',
     })
 
     return response.item

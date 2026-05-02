@@ -20,7 +20,7 @@ const createDraftItem = (): RecipeDraftItem => ({
 
 export const RecipeDetailPage = () => {
   const { t } = useTranslation()
-  const { recipeId } = useParams({ from: '/recipes/$recipeId' })
+  const { recipeId } = useParams({ from: '/app/recipes/$recipeId' })
   const recipeQuery = useQuery({
     queryFn: () => api.getRecipe(recipeId),
     queryKey: ['recipe', recipeId],
@@ -47,7 +47,7 @@ type RecipeDetailEditorProps = {
 
 const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
   const { t } = useTranslation()
-  const { recipeId } = useParams({ from: '/recipes/$recipeId' })
+  const { recipeId } = useParams({ from: '/app/recipes/$recipeId' })
   const queryClient = useQueryClient()
   const [name, setName] = useState(recipe.name)
   const [notes, setNotes] = useState(recipe.notes ?? '')
@@ -114,7 +114,6 @@ const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
             <Link to="/recipes">{t('recipes.backToRecipes')}</Link>
           </Button>
         }
-        description={t('recipes.detailDescription')}
         title={recipe.name}
       />
 

@@ -65,6 +65,18 @@ This document defines the agreed architecture, scope, sequencing, and delivery p
 - [x] Apply the provided custom shadcn theme.
 - [x] Tune desktop layout.
 
+### Post-Phase 7 Stabilization
+
+- [x] Fix Drizzle relation wiring so authenticated household resolution no longer crashes `GET /api/me`.
+- [x] Fix authenticated TanStack Router route wiring for `/shopping-list`, `/products`, `/recipes`, `/recipes/:id`, and `/settings`.
+- [x] Add authenticated household setup UI so signed-in users without a household can create or join one before loading app data.
+
+### Phase 8: Hardening
+
+- [x] Validate authorization coverage.
+- [x] Verify archive behavior and inline creation edge cases.
+- [x] Verify deployment and production OAuth config.
+
 ## Product Summary
 
 Build a shared recipe and shopping list app with these core behaviors:
@@ -655,4 +667,4 @@ As implementation begins, verify in this order:
 
 ## Immediate Next Step
 
-Phase 8 can begin next: authorization coverage review, archive and inline-creation edge-case verification, and deployment/OAuth hardening on top of the completed app shell and backend foundation.
+Run a deployed Vercel smoke test with the real Google OAuth redirect URI and production environment variables, then choose the next post-MVP phase based on live feedback.

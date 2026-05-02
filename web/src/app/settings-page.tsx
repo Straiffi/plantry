@@ -32,7 +32,7 @@ export const SettingsPage = () => {
 
   return (
     <div className="space-y-8">
-      <PageHeader description={t('settings.description')} title={t('settings.title')} />
+      <PageHeader title={t('settings.title')} />
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="space-y-6">

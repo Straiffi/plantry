@@ -1,11 +1,9 @@
 import { MinusCircle } from 'lucide-react'
-import type { ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { Product } from '@/lib/api'
-import { ItemAutocompleteField } from '@/components/item-autocomplete-field'
+import { ProductPickerField, type ProductSelection } from '@/components/product-picker-field'
+import { QuantityStepper } from '@/components/quantity-stepper'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 
 export type RecipeDraftItem = {
   id: string
@@ -23,14 +21,6 @@ type Props = {
 export const RecipeItemEditor = ({ item, onChange, onRemove }: Props) => {
   const { t } = useTranslation()
 
-  const handleSelectSuggestion = (product: Product) => {
-    onChange({
-      ...item,
-      itemId: product.id,
-      name: product.name,
-    })
-  }
-
   const handleNameChange = (value: string) => {
     onChange({
       ...item,
@@ -39,22 +29,33 @@ export const RecipeItemEditor = ({ item, onChange, onRemove }: Props) => {
     })
   }
 
-  const handleQuantityChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleSelectionChange = (selection: ProductSelection) => {
     onChange({
       ...item,
-      quantity: Number.parseInt(event.target.value, 10) || 1,
+      itemId: selection.type === 'existing' ? selection.product.id : undefined,
+      name: selection.type === 'existing' ? selection.product.name : selection.name,
+    })
+  }
+
+  const handleQuantityChange = (quantity: number) => {
+    onChange({
+      ...item,
+      quantity,
     })
   }
 
   return (
     <div className="grid gap-3 rounded-2xl border border-border/60 bg-background/70 p-3 sm:grid-cols-[1fr_112px_auto] sm:items-start">
-      <ItemAutocompleteField
-        onChange={handleNameChange}
-        onSelectSuggestion={handleSelectSuggestion}
+      <ProductPickerField
+        disabled={false}
+        onSelectionChange={handleSelectionChange}
+        onValueChange={handleNameChange}
         placeholder={t('recipes.form.itemPlaceholder')}
         value={item.name}
       />
-      <Input min={1} onChange={handleQuantityChange} type="number" value={String(item.quantity)} />
+      <div className="self-end sm:self-center">
+        <QuantityStepper onChange={handleQuantityChange} value={item.quantity} />
+      </div>
       <Button className="sm:self-center" onClick={onRemove} type="button" variant="ghost">
         <MinusCircle className="size-4" />
         <span>{t('recipes.form.removeItem')}</span>

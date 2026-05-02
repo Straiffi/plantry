@@ -61,5 +61,6 @@ describe('AppShell', () => {
     expect(screen.getAllByRole('link', { name: 'Shopping List' })).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: 'Products' })).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: 'Settings' })).toHaveLength(2)
+    expect(screen.queryByText('Move between groceries, recipes, products, and settings without losing the shared household context.')).not.toBeInTheDocument()
   })
 })

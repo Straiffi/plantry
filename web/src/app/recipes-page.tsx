@@ -67,6 +67,7 @@ const RecipeSummaryCard = ({ onAddToList, onDelete, recipe }: RecipeSummaryCardP
 
 export const RecipesPage = () => {
   const { t } = useTranslation()
+  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false)
   const queryClient = useQueryClient()
   const [name, setName] = useState('')
   const [notes, setNotes] = useState('')
@@ -110,6 +111,7 @@ export const RecipesPage = () => {
       setName('')
       setNotes('')
       setItems([createDraftItem()])
+      setIsCreateFormOpen(false)
       await refreshRecipes()
     },
   })
@@ -130,7 +132,14 @@ export const RecipesPage = () => {
 
   return (
     <div className="space-y-8">
-      <PageHeader description={t('recipes.description')} title={t('recipes.title')} />
+      <PageHeader
+        actions={
+          <Button onClick={() => setIsCreateFormOpen((currentValue) => !currentValue)} type="button" variant="outline">
+            {isCreateFormOpen ? t('recipes.hideCreateForm') : t('recipes.addRecipe')}
+          </Button>
+        }
+        title={t('recipes.title')}
+      />
 
       {pageError && (
         <Card className="border-destructive/25 bg-destructive/5">
@@ -138,52 +147,52 @@ export const RecipesPage = () => {
         </Card>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('recipes.createTitle')}</CardTitle>
-            <CardDescription>{t('recipes.createDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input onChange={(event) => setName(event.target.value)} placeholder={t('recipes.namePlaceholder')} value={name} />
-            <Textarea onChange={(event) => setNotes(event.target.value)} placeholder={t('recipes.notesPlaceholder')} value={notes} />
-            <div className="space-y-3">
-              {items.map((item) => (
-                <RecipeItemEditor
-                  item={item}
-                  key={item.id}
-                  onChange={(nextItem) => setItems((currentItems) => currentItems.map((currentItem) => currentItem.id === item.id ? nextItem : currentItem))}
-                  onRemove={() => setItems((currentItems) => currentItems.length === 1 ? currentItems : currentItems.filter((currentItem) => currentItem.id !== item.id))}
-                />
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={() => setItems((currentItems) => [...currentItems, createDraftItem()])} type="button" variant="outline">
-                <Plus className="size-4" />
-                <span>{t('recipes.addItemRow')}</span>
-              </Button>
-              <Button disabled={createRecipeMutation.isPending} onClick={() => createRecipeMutation.mutate(undefined, { onError: handleMutationError })} type="button">
-                {t('recipes.createRecipe')}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="space-y-6">
+        {isCreateFormOpen && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('recipes.createTitle')}</CardTitle>
+              <CardDescription>{t('recipes.createDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Input onChange={(event) => setName(event.target.value)} placeholder={t('recipes.namePlaceholder')} value={name} />
+              <Textarea onChange={(event) => setNotes(event.target.value)} placeholder={t('recipes.notesPlaceholder')} value={notes} />
+              <div className="space-y-3">
+                {items.map((item) => (
+                  <RecipeItemEditor
+                    item={item}
+                    key={item.id}
+                    onChange={(nextItem) => setItems((currentItems) => currentItems.map((currentItem) => currentItem.id === item.id ? nextItem : currentItem))}
+                    onRemove={() => setItems((currentItems) => currentItems.length === 1 ? currentItems : currentItems.filter((currentItem) => currentItem.id !== item.id))}
+                  />
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => setItems((currentItems) => [...currentItems, createDraftItem()])} type="button" variant="outline">
+                  <Plus className="size-4" />
+                  <span>{t('recipes.addItemRow')}</span>
+                </Button>
+                <Button disabled={createRecipeMutation.isPending} onClick={() => createRecipeMutation.mutate(undefined, { onError: handleMutationError })} type="button">
+                  {t('recipes.createRecipe')}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        <div className="space-y-4">
-          {recipes.length === 0 && (
-            <Card>
-              <CardContent className="p-6 text-sm text-muted-foreground">{t('recipes.empty')}</CardContent>
-            </Card>
-          )}
-          {recipes.map((recipe) => (
-            <RecipeSummaryCard
-              key={recipe.id}
-              onAddToList={(recipeId) => addRecipeToShoppingListMutation.mutate(recipeId, { onError: handleMutationError })}
-              onDelete={(recipeId) => deleteRecipeMutation.mutate(recipeId, { onError: handleMutationError })}
-              recipe={recipe}
-            />
-          ))}
-        </div>
+        {recipes.length === 0 && (
+          <Card>
+            <CardContent className="p-6 text-sm text-muted-foreground">{t('recipes.empty')}</CardContent>
+          </Card>
+        )}
+        {recipes.map((recipe) => (
+          <RecipeSummaryCard
+            key={recipe.id}
+            onAddToList={(recipeId) => addRecipeToShoppingListMutation.mutate(recipeId, { onError: handleMutationError })}
+            onDelete={(recipeId) => deleteRecipeMutation.mutate(recipeId, { onError: handleMutationError })}
+            recipe={recipe}
+          />
+        ))}
       </div>
     </div>
   )

@@ -1,0 +1,201 @@
+import { cleanup, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { ShoppingListPage } from '@/app/shopping-list-page'
+import { renderWithProviders } from '@/test/render'
+
+const apiMock = vi.hoisted(() => ({
+  addShoppingListItem: vi.fn(),
+  deleteCheckedShoppingListItems: vi.fn(),
+  deleteShoppingListItem: vi.fn(),
+  getShoppingList: vi.fn(),
+  searchProducts: vi.fn(),
+  toggleShoppingListItem: vi.fn(),
+  updateShoppingListItem: vi.fn(),
+}))
+
+vi.mock('@/lib/api', () => {
+  class ApiError extends Error {
+    status: number
+
+    constructor(message: string, status: number) {
+      super(message)
+      this.status = status
+    }
+  }
+
+  return {
+    ApiError,
+    api: apiMock,
+  }
+})
+
+const shoppingListItem = {
+  checked: false,
+  checkedAt: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  householdId: 'household-1',
+  id: 'shopping-list-item-1',
+  item: {
+    archivedAt: null,
+    category: null,
+    categoryId: null,
+    id: 'item-1',
+    name: 'Tomato',
+  },
+  itemId: 'item-1',
+  quantity: 1,
+  updatedAt: '2026-01-01T00:00:00.000Z',
+}
+
+describe('ShoppingListPage', () => {
+  afterEach(() => {
+    cleanup()
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    apiMock.deleteCheckedShoppingListItems.mockResolvedValue({ deletedCount: 0 })
+    apiMock.deleteShoppingListItem.mockResolvedValue(undefined)
+    apiMock.toggleShoppingListItem.mockResolvedValue(shoppingListItem)
+    apiMock.updateShoppingListItem.mockResolvedValue(shoppingListItem)
+  })
+
+  it('opens and closes the draft row from the Add item button', async () => {
+    const user = userEvent.setup()
+
+    apiMock.getShoppingList.mockResolvedValue({ groups: [], items: [] })
+    apiMock.searchProducts.mockResolvedValue([])
+
+    renderWithProviders(<ShoppingListPage />)
+
+    expect(await screen.findByRole('button', { name: 'Add item' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Add item' }))
+
+    expect(screen.getByPlaceholderText('Search or type a product name')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Remove item' }))
+
+    expect(screen.getByRole('button', { name: 'Add item' })).toBeInTheDocument()
+  })
+
+  it('adds a selected product and leaves a fresh draft row open', async () => {
+    const user = userEvent.setup()
+
+    apiMock.getShoppingList
+      .mockResolvedValueOnce({
+        groups: [{ category: null, items: [shoppingListItem] }],
+        items: [shoppingListItem],
+      })
+      .mockResolvedValue({
+        groups: [{ category: null, items: [shoppingListItem] }],
+        items: [shoppingListItem],
+      })
+    apiMock.searchProducts.mockResolvedValue([
+      {
+        archivedAt: null,
+        category: null,
+        categoryId: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        createdByUserId: 'user-1',
+        householdId: 'household-1',
+        id: 'item-1',
+        name: 'Tomato',
+        normalizedName: 'tomato',
+        tags: [],
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ])
+    apiMock.addShoppingListItem.mockResolvedValue(shoppingListItem)
+
+    renderWithProviders(<ShoppingListPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Add item' }))
+
+    await user.type(screen.getByPlaceholderText('Search or type a product name'), 'Tomato')
+
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(apiMock.addShoppingListItem).toHaveBeenCalledWith(expect.objectContaining({
+        itemId: 'item-1',
+        quantity: 1,
+      }))
+    })
+
+    expect(await screen.findByText('Tomato')).toBeInTheDocument()
+    const nextInput = screen.getByPlaceholderText('Search or type a product name')
+
+    expect(nextInput).toHaveValue('')
+    expect(nextInput).toHaveFocus()
+  })
+
+  it('offers Create product for unknown searches and adds by free text', async () => {
+    const user = userEvent.setup()
+
+    apiMock.getShoppingList
+      .mockResolvedValueOnce({ groups: [], items: [] })
+      .mockResolvedValue({
+        groups: [{
+          category: null,
+          items: [{
+            ...shoppingListItem,
+            id: 'shopping-list-item-2',
+            item: {
+              ...shoppingListItem.item,
+              id: 'item-2',
+              name: 'Paprika',
+            },
+            itemId: 'item-2',
+          }],
+        }],
+        items: [{
+          ...shoppingListItem,
+          id: 'shopping-list-item-2',
+          item: {
+            ...shoppingListItem.item,
+            id: 'item-2',
+            name: 'Paprika',
+          },
+          itemId: 'item-2',
+        }],
+      })
+    apiMock.searchProducts.mockResolvedValue([])
+    apiMock.addShoppingListItem.mockResolvedValue({
+      ...shoppingListItem,
+      id: 'shopping-list-item-2',
+      item: {
+        ...shoppingListItem.item,
+        id: 'item-2',
+        name: 'Paprika',
+      },
+      itemId: 'item-2',
+    })
+
+    renderWithProviders(<ShoppingListPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Add item' }))
+    await user.type(screen.getByPlaceholderText('Search or type a product name'), 'Paprika')
+
+    const createButton = await screen.findByRole('button', { name: 'Create product "Paprika"' })
+
+    expect(createButton).toBeInTheDocument()
+
+    await user.click(createButton)
+
+    await waitFor(() => {
+      expect(apiMock.addShoppingListItem).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'Paprika',
+        quantity: 1,
+      }))
+    })
+
+    expect(await screen.findByText('Paprika')).toBeInTheDocument()
+    const nextInput = screen.getByPlaceholderText('Search or type a product name')
+
+    expect(nextInput).toHaveValue('')
+    expect(nextInput).toHaveFocus()
+  })
+})

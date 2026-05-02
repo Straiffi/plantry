@@ -56,6 +56,7 @@ const createRepositoryMock = () => {
     insertItemTag: vi.fn(),
     listCategories: vi.fn(),
     listItems: vi.fn(),
+    reorderCategories: vi.fn(),
     searchItems: vi.fn(),
     transaction: vi.fn(),
     updateCategory: vi.fn(),
@@ -81,6 +82,7 @@ describe('itemCatalogService', () => {
     const service = createItemCatalogService(repository)
     const category = createCategory({ name: 'Produce' })
 
+    repository.listCategories.mockResolvedValue([])
     repository.insertCategory.mockResolvedValue(category)
 
     await expect(service.createCategory({ householdId: 'household-1', name: '  Produce  ' })).resolves.toEqual(category)
@@ -88,7 +90,56 @@ describe('itemCatalogService', () => {
     expect(repository.insertCategory).toHaveBeenCalledWith({
       householdId: 'household-1',
       name: 'Produce',
-      sortOrder: 0,
+      sortOrder: 1,
+    })
+  })
+
+  it('appends new categories to the end of the existing sort order', async () => {
+    const repository = createRepositoryMock()
+    const service = createItemCatalogService(repository)
+    const category = createCategory({ id: 'category-3', name: 'Dairy', sortOrder: 3 })
+
+    repository.listCategories.mockResolvedValue([
+      createCategory({ id: 'category-1', sortOrder: 1 }),
+      createCategory({ id: 'category-2', name: 'Pantry', sortOrder: 2 }),
+    ])
+    repository.insertCategory.mockResolvedValue(category)
+
+    await expect(service.createCategory({ householdId: 'household-1', name: 'Dairy' })).resolves.toEqual(category)
+
+    expect(repository.insertCategory).toHaveBeenCalledWith({
+      householdId: 'household-1',
+      name: 'Dairy',
+      sortOrder: 3,
+    })
+  })
+
+  it('reorders categories into contiguous sort order positions', async () => {
+    const repository = createRepositoryMock()
+    const service = createItemCatalogService(repository)
+    const reorderedCategories = [
+      createCategory({ id: 'category-3', name: 'Dairy', sortOrder: 1 }),
+      createCategory({ id: 'category-1', name: 'Produce', sortOrder: 2 }),
+      createCategory({ id: 'category-2', name: 'Pantry', sortOrder: 3 }),
+    ]
+
+    repository.listCategories
+      .mockResolvedValueOnce([
+        createCategory({ id: 'category-1', sortOrder: 1 }),
+        createCategory({ id: 'category-2', name: 'Pantry', sortOrder: 2 }),
+        createCategory({ id: 'category-3', name: 'Dairy', sortOrder: 3 }),
+      ])
+      .mockResolvedValueOnce(reorderedCategories)
+
+    await expect(service.reorderCategories({
+      householdId: 'household-1',
+      orderedCategoryIds: ['category-3', 'category-1', 'category-2'],
+    })).resolves.toEqual(reorderedCategories)
+
+    expect(repository.reorderCategories).toHaveBeenCalledWith({
+      householdId: 'household-1',
+      orderedCategoryIds: ['category-3', 'category-1', 'category-2'],
+      updatedAt: expect.any(Date),
     })
   })
 

@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import { DndContext, DragOverlay, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, arrayMove, defaultAnimateLayoutChanges, useSortable, verticalListSortingStrategy, type AnimateLayoutChanges } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, RotateCcw, Tags, Trash2 } from 'lucide-react'
+import { Archive, GripVertical, RotateCcw, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { api, ApiError, type Category, type Product } from '@/lib/api'
@@ -12,27 +15,29 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
+type CategoryRowProps = {
+  category: Category
+  isDragging?: boolean
+  onDelete: (categoryId: string) => void
+}
+
+const applyCategorySortOrder = (categories: Category[]) => {
+  return categories.map((category, index) => ({
+    ...category,
+    sortOrder: index + 1,
+  }))
+}
+
 type ProductCardProps = {
   categories: Category[]
   onArchive: (itemId: string) => void
-  onDeleteTag: (itemId: string, tag: string) => void
+  onCategoryChange: (itemId: string, categoryId: string | null) => void
   onRestore: (itemId: string) => void
-  onTagSubmit: (itemId: string, tag: string) => void
   product: Product
 }
 
-const ProductCard = ({ categories, onArchive, onDeleteTag, onRestore, onTagSubmit, product }: ProductCardProps) => {
+const ProductCard = ({ categories, onArchive, onCategoryChange, onRestore, product }: ProductCardProps) => {
   const { t } = useTranslation()
-  const [tagName, setTagName] = useState('')
-
-  const handleTagSubmit = () => {
-    if (!tagName.trim()) {
-      return
-    }
-
-    onTagSubmit(product.id, tagName)
-    setTagName('')
-  }
 
   return (
     <Card className="border-border/60 bg-card/90 shadow-[0_16px_48px_rgba(62,44,32,0.06)]">
@@ -55,38 +60,80 @@ const ProductCard = ({ categories, onArchive, onDeleteTag, onRestore, onTagSubmi
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          {product.tags.length === 0 && <Badge variant="outline">{t('products.noTags')}</Badge>}
-          {product.tags.map((tag) => (
-            <Button
-              className="h-7 gap-1 px-2.5"
-              key={tag}
-              onClick={() => onDeleteTag(product.id, tag)}
-              size="xs"
-              type="button"
-              variant="outline"
-            >
-              <Tags className="size-3" />
-              <span>{tag}</span>
-            </Button>
-          ))}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t('products.categoryLabel')}</p>
+          <Select onValueChange={(value) => onCategoryChange(product.id, value === 'uncategorized' ? null : value)} value={product.categoryId ?? 'uncategorized'}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={t('products.uncategorized')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="uncategorized">{t('products.uncategorized')}</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-          <Input onChange={(event) => setTagName(event.target.value)} placeholder={t('products.tagPlaceholder')} value={tagName} />
-          <Button onClick={handleTagSubmit} type="button">{t('products.addTag')}</Button>
-        </div>
-
-        {categories.length > 0 && !product.category && (
-          <p className="text-xs text-muted-foreground">{t('products.categoryHint')}</p>
-        )}
       </CardContent>
     </Card>
   )
 }
 
+const CategoryRowContent = ({ category, isDragging = false, onDelete }: CategoryRowProps) => {
+  const { t } = useTranslation()
+
+  return (
+    <div className={`flex items-center justify-between rounded-2xl border border-border/60 bg-background/70 px-4 py-3 ${isDragging ? 'ring-1 ring-primary/20' : ''}`}>
+      <div>
+        <div className="flex items-center gap-2">
+          <GripVertical className="size-4 text-muted-foreground" />
+          <p className="font-medium text-foreground">{category.name}</p>
+        </div>
+        <p className="text-xs text-muted-foreground">{t('products.sortOrderLabel', { value: category.sortOrder })}</p>
+      </div>
+      <Button onClick={() => onDelete(category.id)} type="button" variant="ghost">
+        <Trash2 className="size-4" />
+        <span>{t('products.deleteCategory')}</span>
+      </Button>
+    </div>
+  )
+}
+
+const animateCategoryLayoutChanges: AnimateLayoutChanges = (args) => {
+  if (args.isSorting) {
+    return defaultAnimateLayoutChanges(args)
+  }
+
+  return false
+}
+
+const SortableCategoryRow = ({ category, onDelete }: CategoryRowProps) => {
+  const { attributes, isDragging, listeners, setNodeRef, transform, transition } = useSortable({
+    animateLayoutChanges: animateCategoryLayoutChanges,
+    id: category.id,
+  })
+
+  return (
+    <div
+      className={isDragging ? 'opacity-0' : undefined}
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+      {...attributes}
+      {...listeners}
+    >
+      <CategoryRowContent category={category} isDragging={isDragging} onDelete={onDelete} />
+    </div>
+  )
+}
+
 export const ProductsPage = () => {
   const { t } = useTranslation()
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
   const queryClient = useQueryClient()
   const [categoryName, setCategoryName] = useState('')
   const [productCategoryId, setProductCategoryId] = useState<string>('')
@@ -107,6 +154,15 @@ export const ProductsPage = () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] }),
       queryClient.invalidateQueries({ queryKey: ['products', 'all'] }),
       queryClient.invalidateQueries({ queryKey: ['product-search'] }),
+      queryClient.invalidateQueries({ queryKey: ['shopping-list'] }),
+    ])
+  }
+
+  const invalidateCategoryDependents = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['products', 'all'] }),
+      queryClient.invalidateQueries({ queryKey: ['product-search'] }),
+      queryClient.invalidateQueries({ queryKey: ['shopping-list'] }),
     ])
   }
 
@@ -121,6 +177,28 @@ export const ProductsPage = () => {
   const deleteCategoryMutation = useMutation({
     mutationFn: (categoryId: string) => api.deleteCategory(categoryId),
     onSuccess: invalidateCatalog,
+  })
+  const reorderCategoriesMutation = useMutation<Category[], unknown, Category[], { previousCategories?: Category[] }>({
+    mutationFn: (nextCategories: Category[]) => api.reorderCategories(nextCategories.map((category) => category.id)),
+    onError: (_error, _nextCategories, context) => {
+      if (context?.previousCategories) {
+        queryClient.setQueryData(['categories'], context.previousCategories)
+      }
+    },
+    onMutate: async (nextCategories) => {
+      const optimisticCategories = applyCategorySortOrder(nextCategories)
+      await queryClient.cancelQueries({ queryKey: ['categories'] })
+
+      const previousCategories = queryClient.getQueryData<Category[]>(['categories'])
+
+      queryClient.setQueryData(['categories'], optimisticCategories)
+
+      return { previousCategories }
+    },
+    onSuccess: async (categories) => {
+      queryClient.setQueryData(['categories'], categories)
+      await invalidateCategoryDependents()
+    },
   })
   const createProductMutation = useMutation({
     mutationFn: () => api.createProduct({
@@ -142,12 +220,8 @@ export const ProductsPage = () => {
     mutationFn: (itemId: string) => api.restoreProduct(itemId),
     onSuccess: invalidateCatalog,
   })
-  const addTagMutation = useMutation({
-    mutationFn: ({ itemId, tag }: { itemId: string; tag: string }) => api.addProductTag(itemId, tag),
-    onSuccess: invalidateCatalog,
-  })
-  const deleteTagMutation = useMutation({
-    mutationFn: ({ itemId, tag }: { itemId: string; tag: string }) => api.deleteProductTag(itemId, tag),
+  const updateProductMutation = useMutation({
+    mutationFn: ({ categoryId, itemId }: { categoryId: string | null; itemId: string }) => api.updateProduct(itemId, { categoryId }),
     onSuccess: invalidateCatalog,
   })
 
@@ -163,6 +237,45 @@ export const ProductsPage = () => {
   const categories = categoriesQuery.data ?? []
   const products = productsQuery.data ?? []
   const visibleProducts = products.filter((product) => (showArchived ? product.archivedAt !== null : product.archivedAt === null))
+  const activeCategory = activeCategoryId
+    ? categories.find((category) => category.id === activeCategoryId) ?? null
+    : null
+  const sensors = useSensors(useSensor(PointerSensor, {
+    activationConstraint: {
+      distance: 6,
+    },
+  }))
+
+  const handleCategoryDelete = (categoryId: string) => {
+    deleteCategoryMutation.mutate(categoryId, { onError: handleMutationError })
+  }
+
+  const handleCategoryDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (!over || active.id === over.id) {
+      requestAnimationFrame(() => {
+        setActiveCategoryId(null)
+      })
+
+      return
+    }
+
+    const orderedCategoryIds = [...categories]
+    const draggedIndex = orderedCategoryIds.findIndex((category) => category.id === active.id)
+    const targetIndex = orderedCategoryIds.findIndex((category) => category.id === over.id)
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      return
+    }
+
+    const nextOrder = arrayMove(orderedCategoryIds, draggedIndex, targetIndex)
+    reorderCategoriesMutation.mutate(nextOrder, { onError: handleMutationError })
+
+    requestAnimationFrame(() => {
+      setActiveCategoryId(null)
+    })
+  }
 
   if (categoriesQuery.isPending || productsQuery.isPending) {
     return null
@@ -176,7 +289,6 @@ export const ProductsPage = () => {
             {showArchived ? t('products.showActive') : t('products.showArchived')}
           </Button>
         }
-        description={t('products.description')}
         title={t('products.title')}
       />
 
@@ -207,22 +319,27 @@ export const ProductsPage = () => {
 
               <div className="space-y-3">
                 {categories.length === 0 && <p className="text-sm text-muted-foreground">{t('products.noCategories')}</p>}
-                {categories.map((category) => (
-                  <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/70 px-4 py-3" key={category.id}>
-                    <div>
-                      <p className="font-medium text-foreground">{category.name}</p>
-                      <p className="text-xs text-muted-foreground">{t('products.sortOrderLabel', { value: category.sortOrder })}</p>
-                    </div>
-                    <Button
-                      onClick={() => deleteCategoryMutation.mutate(category.id, { onError: handleMutationError })}
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Trash2 className="size-4" />
-                      <span>{t('products.deleteCategory')}</span>
-                    </Button>
-                  </div>
-                ))}
+                {categories.length > 0 && (
+                  <DndContext
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleCategoryDragEnd}
+                    onDragStart={(event) => setActiveCategoryId(String(event.active.id))}
+                    sensors={sensors}
+                  >
+                    <SortableContext items={categories.map((category) => category.id)} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-3">
+                        {categories.map((category) => (
+                          <SortableCategoryRow category={category} key={category.id} onDelete={handleCategoryDelete} />
+                        ))}
+                      </div>
+                    </SortableContext>
+                    <DragOverlay dropAnimation={null}>
+                      {activeCategory
+                        ? <CategoryRowContent category={activeCategory} isDragging onDelete={handleCategoryDelete} />
+                        : null}
+                    </DragOverlay>
+                  </DndContext>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -276,9 +393,8 @@ export const ProductsPage = () => {
               categories={categories}
               key={product.id}
               onArchive={(itemId) => archiveProductMutation.mutate(itemId, { onError: handleMutationError })}
-              onDeleteTag={(itemId, tag) => deleteTagMutation.mutate({ itemId, tag }, { onError: handleMutationError })}
+              onCategoryChange={(itemId, categoryId) => updateProductMutation.mutate({ categoryId, itemId }, { onError: handleMutationError })}
               onRestore={(itemId) => restoreProductMutation.mutate(itemId, { onError: handleMutationError })}
-              onTagSubmit={(itemId, tag) => addTagMutation.mutate({ itemId, tag }, { onError: handleMutationError })}
               product={product}
             />
           ))}
