@@ -90,7 +90,10 @@ const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
       name,
       notes,
     }),
-    onSuccess: refreshRecipes,
+    onSuccess: async () => {
+      await refreshRecipes()
+      window.location.assign('/recipes')
+    },
   })
   const addToShoppingListMutation = useMutation({
     mutationFn: () => api.addRecipeToShoppingList(recipeId),

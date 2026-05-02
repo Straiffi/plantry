@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RecipeDetailPage } from '@/app/recipe-detail-page'
@@ -7,6 +8,7 @@ import { renderWithProviders } from '@/test/render'
 
 const apiMock = vi.hoisted(() => ({
   getRecipe: vi.fn(),
+  updateRecipe: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-router', async () => {
@@ -36,12 +38,17 @@ vi.mock('@/lib/api', () => {
 })
 
 describe('RecipeDetailPage', () => {
+  const assignMock = vi.fn()
+
   afterEach(() => {
     cleanup()
   })
 
   beforeEach(() => {
     vi.clearAllMocks()
+    apiMock.updateRecipe.mockResolvedValue(undefined)
+    assignMock.mockReset()
+    vi.stubGlobal('location', { ...window.location, assign: assignMock })
   })
 
   it('renders a loading skeleton while the recipe is pending', () => {
@@ -50,5 +57,53 @@ describe('RecipeDetailPage', () => {
     renderWithProviders(<RecipeDetailPage />)
 
     expect(screen.getByTestId('recipe-detail-page-skeleton')).toBeInTheDocument()
+  })
+
+  it('returns to the recipes page after saving changes', async () => {
+    const user = userEvent.setup()
+
+    apiMock.getRecipe.mockResolvedValue({
+      createdAt: '2026-01-01T00:00:00.000Z',
+      createdByUserId: 'user-1',
+      householdId: 'household-1',
+      id: 'recipe-1',
+      items: [{
+        createdAt: '2026-01-01T00:00:00.000Z',
+        id: 'recipe-item-1',
+        item: {
+          archivedAt: null,
+          category: null,
+          categoryId: null,
+          id: 'item-1',
+          name: 'Tomato',
+        },
+        itemId: 'item-1',
+        quantity: 2,
+        recipeId: 'recipe-1',
+        sortOrder: 0,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      }],
+      name: 'Pasta',
+      notes: 'Fresh sauce',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    })
+
+    renderWithProviders(<RecipeDetailPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Save recipe' }))
+
+    await waitFor(() => {
+      expect(apiMock.updateRecipe).toHaveBeenCalledWith('recipe-1', expect.objectContaining({
+        items: [{
+          itemId: 'item-1',
+          name: undefined,
+          quantity: 2,
+          sortOrder: 0,
+        }],
+        name: 'Pasta',
+        notes: 'Fresh sauce',
+      }))
+      expect(assignMock).toHaveBeenCalledWith('/recipes')
+    })
   })
 })
