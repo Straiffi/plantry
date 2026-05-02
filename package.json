@@ -1,0 +1,23 @@
+{
+  "name": "recipe-app",
+  "private": true,
+  "workspaces": [
+    "web",
+    "api",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w @recipe-app/web\" \"npm run dev -w @recipe-app/api\"",
+    "dev:web": "npm run dev -w @recipe-app/web",
+    "dev:api": "npm run dev -w @recipe-app/api",
+    "build": "npm run build -w @recipe-app/shared && npm run build -w @recipe-app/db && npm run build -w @recipe-app/web && npm run build -w @recipe-app/api",
+    "test": "npm run test -w @recipe-app/web && npm run test -w @recipe-app/api",
+    "typecheck": "npm run typecheck -w @recipe-app/shared && npm run typecheck -w @recipe-app/db && npm run typecheck -w @recipe-app/web && npm run typecheck -w @recipe-app/api",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "drizzle-kit": "^0.31.6"
+  }
+}

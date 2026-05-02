@@ -4,6 +4,25 @@
 
 This document defines the agreed architecture, scope, sequencing, and delivery plan before implementation begins.
 
+## Progress
+
+### Phase 1: Project Setup
+
+- [x] Scaffold monorepo structure.
+- [x] Set up Vite frontend.
+- [x] Set up Hono backend.
+- [x] Set up TypeScript config and shared package boundaries.
+- [x] Set up shadcn/ui foundation without final theme styling.
+
+### Phase 2: Database and Auth
+
+- [x] Configure Postgres and Drizzle.
+- [x] Define auth-related tables as needed by Better Auth.
+- [x] Define app tables.
+- [x] Add migrations.
+- [x] Integrate Better Auth with Google OAuth.
+- [x] Add auth/session middleware.
+
 ## Product Summary
 
 Build a shared recipe and shopping list app with these core behaviors:
@@ -40,6 +59,7 @@ Build a shared recipe and shopping list app with these core behaviors:
 - TanStack Router
 - TanStack Query
 - shadcn/ui
+- lucide-react
 - Custom theme to be applied before UI implementation begins
 - shadcn preset: `b1226dcyno`
 
@@ -360,6 +380,7 @@ These should contain domain behavior. Route handlers should stay thin.
 
 - Auth screens
 - App shell / nav
+- Iconography using Lucide icons
 - Item autocomplete combobox
 - Recipe list and cards
 - Recipe item editor rows
@@ -573,4 +594,4 @@ As implementation begins, verify in this order:
 
 ## Immediate Next Step
 
-After this plan is accepted, start scaffolding the agreed stack in the repository and wire auth/database foundations before building domain features.
+Phase 3 can begin next: household model wiring, invite code flow, `GET /api/me` expansion, and household-aware authorization helpers on top of the completed database/auth foundation.
