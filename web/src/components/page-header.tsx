@@ -16,7 +16,7 @@ export const PageHeader = ({ actions, description, title, titleClassName }: Prop
         <h1 className={cn('font-heading text-2xl tracking-tight text-foreground sm:text-4xl', titleClassName)}>{title}</h1>
         {description && <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">{description}</p>}
       </div>
-      {actions && <div className="flex shrink-0 items-center gap-3">{actions}</div>}
+      {actions && <div className="flex w-full shrink-0 items-stretch gap-3 sm:w-auto sm:items-center">{actions}</div>}
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { app } from './app.js'
 import { auth } from './lib/auth.js'
 import { householdService } from './services/household.js'
 import { ItemCatalogServiceError, itemCatalogService } from './services/item-catalog.js'
+import { menuService, MenuServiceError } from './services/menu.js'
 import { recipeService, RecipeServiceError } from './services/recipes.js'
 import { shoppingListService, ShoppingListServiceError } from './services/shopping-list.js'
 
@@ -106,10 +107,23 @@ const recipe = {
       updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     },
   ],
+  lastAddedToMenuAt: null,
   notes: 'Fresh pasta sauce',
   recipeItems: [],
   updatedAt: new Date('2026-01-01T00:00:00.000Z'),
   name: 'Tomato Pasta',
+}
+
+const menuItem = {
+  checked: false,
+  checkedAt: null,
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  householdId: 'household-1',
+  id: 'menu-item-1',
+  lastAddedAt: new Date('2026-01-03T00:00:00.000Z'),
+  recipe,
+  recipeId: 'recipe-1',
+  updatedAt: new Date('2026-01-03T00:00:00.000Z'),
 }
 
 const protectedRouteCases: ProtectedRouteCase[] = [
@@ -130,6 +144,11 @@ const protectedRouteCases: ProtectedRouteCase[] = [
   { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/items/item-1/restore' },
   { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/items/item-1/tags' },
   { init: { method: 'DELETE' }, method: 'DELETE', path: 'http://localhost/api/items/item-1/tags/fresh' },
+  { method: 'GET', path: 'http://localhost/api/menu' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/menu/items/menu-item-1/toggle-checked' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/menu/delete-checked' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/menu/items/menu-item-1/add-to-shopping-list' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/menu/add-to-shopping-list' },
   { method: 'GET', path: 'http://localhost/api/shopping-list' },
   { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/shopping-list/items' },
   { init: { method: 'PATCH' }, method: 'PATCH', path: 'http://localhost/api/shopping-list/items/shopping-list-item-1' },
@@ -140,6 +159,7 @@ const protectedRouteCases: ProtectedRouteCase[] = [
   { method: 'GET', path: 'http://localhost/api/recipes/recipe-1' },
   { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/recipes' },
   { init: { method: 'PATCH' }, method: 'PATCH', path: 'http://localhost/api/recipes/recipe-1' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/recipes/recipe-1/add-to-menu' },
   { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/recipes/recipe-1/add-to-shopping-list' },
   { init: { method: 'DELETE' }, method: 'DELETE', path: 'http://localhost/api/recipes/recipe-1' },
 ]
@@ -162,6 +182,11 @@ const householdScopedRouteCases: ProtectedRouteCase[] = [
   { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/items/item-1/restore' },
   { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/items/item-1/tags' },
   { init: { method: 'DELETE' }, method: 'DELETE', path: 'http://localhost/api/items/item-1/tags/fresh' },
+  { method: 'GET', path: 'http://localhost/api/menu' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/menu/items/menu-item-1/toggle-checked' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/menu/delete-checked' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/menu/items/menu-item-1/add-to-shopping-list' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/menu/add-to-shopping-list' },
   { method: 'GET', path: 'http://localhost/api/shopping-list' },
   { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/shopping-list/items' },
   { init: { method: 'PATCH' }, method: 'PATCH', path: 'http://localhost/api/shopping-list/items/shopping-list-item-1' },
@@ -172,6 +197,7 @@ const householdScopedRouteCases: ProtectedRouteCase[] = [
   { method: 'GET', path: 'http://localhost/api/recipes/recipe-1' },
   { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/recipes' },
   { init: { method: 'PATCH' }, method: 'PATCH', path: 'http://localhost/api/recipes/recipe-1' },
+  { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/recipes/recipe-1/add-to-menu' },
   { init: { method: 'POST' }, method: 'POST', path: 'http://localhost/api/recipes/recipe-1/add-to-shopping-list' },
   { init: { method: 'DELETE' }, method: 'DELETE', path: 'http://localhost/api/recipes/recipe-1' },
 ]
@@ -583,6 +609,97 @@ describe('app', () => {
     })
   })
 
+  it('returns menu items for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const getMenuSpy = vi.spyOn(menuService, 'getMenu').mockResolvedValue({
+      items: [menuItem],
+    })
+
+    const response = await app.request('http://localhost/api/menu')
+
+    expect(response.status).toBe(200)
+    expect(getMenuSpy).toHaveBeenCalledWith('household-1')
+  })
+
+  it('toggles menu rows for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const toggleMenuItemSpy = vi.spyOn(menuService, 'toggleMenuItemChecked').mockResolvedValue({
+      ...menuItem,
+      checked: true,
+      checkedAt: new Date('2026-01-04T00:00:00.000Z'),
+    })
+
+    const response = await app.request('http://localhost/api/menu/items/menu-item-1/toggle-checked', {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(200)
+    expect(toggleMenuItemSpy).toHaveBeenCalledWith('household-1', 'menu-item-1')
+  })
+
+  it('adds a menu recipe to the shopping list for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const addMenuItemToShoppingListSpy = vi.spyOn(menuService, 'addMenuItemToShoppingList').mockResolvedValue({
+      items: [shoppingListItem],
+      menuItem,
+    })
+
+    const response = await app.request('http://localhost/api/menu/items/menu-item-1/add-to-shopping-list', {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(200)
+    expect(addMenuItemToShoppingListSpy).toHaveBeenCalledWith('household-1', 'menu-item-1', 'user-1')
+  })
+
+  it('adds unchecked menu recipes to the shopping list for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const addUncheckedMenuSpy = vi.spyOn(menuService, 'addUncheckedMenuToShoppingList').mockResolvedValue({
+      items: [shoppingListItem],
+      menuItems: [menuItem],
+    })
+
+    const response = await app.request('http://localhost/api/menu/add-to-shopping-list', {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(200)
+    expect(addUncheckedMenuSpy).toHaveBeenCalledWith('household-1', 'user-1')
+  })
+
+  it('deletes checked menu rows for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const deleteCheckedMenuSpy = vi.spyOn(menuService, 'deleteCheckedMenuItems').mockResolvedValue({
+      deletedCount: 1,
+    })
+
+    const response = await app.request('http://localhost/api/menu/delete-checked', {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(200)
+    expect(deleteCheckedMenuSpy).toHaveBeenCalledWith('household-1')
+  })
+
+  it('maps missing menu rows to a not found response', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    vi.spyOn(menuService, 'toggleMenuItemChecked').mockRejectedValue(
+      new MenuServiceError('MENU_ITEM_NOT_FOUND', 'Menu item not found'),
+    )
+
+    const response = await app.request('http://localhost/api/menu/items/menu-item-1/toggle-checked', {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(404)
+  })
+
   it('returns grouped shopping list data for the authenticated household', async () => {
     vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
     vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
@@ -827,6 +944,19 @@ describe('app', () => {
 
     expect(response.status).toBe(200)
     expect(addRecipeToShoppingListSpy).toHaveBeenCalledWith('household-1', 'recipe-1', 'user-1')
+  })
+
+  it('adds recipes to the menu for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const addRecipeToMenuSpy = vi.spyOn(menuService, 'addRecipeToMenu').mockResolvedValue(menuItem)
+
+    const response = await app.request('http://localhost/api/recipes/recipe-1/add-to-menu', {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(200)
+    expect(addRecipeToMenuSpy).toHaveBeenCalledWith('household-1', 'recipe-1')
   })
 
   it('deletes recipes for the authenticated household', async () => {

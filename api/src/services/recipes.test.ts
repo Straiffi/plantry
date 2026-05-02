@@ -44,6 +44,16 @@ const createRecipe = (overrides: Partial<{
   createdByUserId: string
   householdId: string
   id: string
+  menuItems: Array<{
+    checked: boolean
+    checkedAt: Date | null
+    createdAt: Date
+    householdId: string
+    id: string
+    lastAddedAt: Date
+    recipeId: string
+    updatedAt: Date
+  }>
   name: string
   notes: string | null
   recipeItems: Array<{
@@ -63,6 +73,7 @@ const createRecipe = (overrides: Partial<{
     createdByUserId: 'user-1',
     householdId: 'household-1',
     id: 'recipe-1',
+    menuItems: [],
     name: 'Pasta',
     notes: null,
     recipeItems: [],

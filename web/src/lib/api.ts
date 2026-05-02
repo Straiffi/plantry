@@ -96,8 +96,21 @@ export type Recipe = {
   householdId: string
   id: string
   items: RecipeItem[]
+  lastAddedToMenuAt: string | null
   name: string
   notes: string | null
+  updatedAt: string
+}
+
+export type MenuItem = {
+  checked: boolean
+  checkedAt: string | null
+  createdAt: string
+  householdId: string
+  id: string
+  lastAddedAt: string
+  recipe: Recipe
+  recipeId: string
   updatedAt: string
 }
 
@@ -195,6 +208,13 @@ export const api = {
       method: 'POST',
     })
   },
+  addRecipeToMenu: async (recipeId: string) => {
+    const response = await request<{ item: MenuItem }>(`/recipes/${recipeId}/add-to-menu`, {
+      method: 'POST',
+    })
+
+    return response.item
+  },
   addShoppingListItem: async (input: { categoryId?: string | null; itemId?: string; name?: string; quantity: number }) => {
     const response = await request<{ item: ShoppingListItem }>('/shopping-list/items', {
       body: JSON.stringify(input),
@@ -267,6 +287,11 @@ export const api = {
       method: 'DELETE',
     })
   },
+  deleteCheckedMenuItems: async () => {
+    return request<{ deletedCount: number }>('/menu/delete-checked', {
+      method: 'POST',
+    })
+  },
   deleteShoppingListItem: async (shoppingListItemId: string) => {
     await request(`/shopping-list/items/${shoppingListItemId}`, {
       method: 'DELETE',
@@ -289,6 +314,9 @@ export const api = {
   },
   getMe: async () => {
     return request<MeResponse>('/me')
+  },
+  getMenu: async () => {
+    return request<{ items: MenuItem[] }>('/menu')
   },
   getProducts: async (includeArchived: boolean) => {
     const response = await request<{ items: Product[] }>(`/items?includeArchived=${String(includeArchived)}`)
@@ -335,12 +363,29 @@ export const api = {
 
     return response.items
   },
+  toggleMenuItemChecked: async (menuItemId: string) => {
+    const response = await request<{ item: MenuItem }>(`/menu/items/${menuItemId}/toggle-checked`, {
+      method: 'POST',
+    })
+
+    return response.item
+  },
   toggleShoppingListItem: async (shoppingListItemId: string) => {
     const response = await request<{ item: ShoppingListItem }>(`/shopping-list/items/${shoppingListItemId}/toggle-checked`, {
       method: 'POST',
     })
 
     return response.item
+  },
+  addMenuItemToShoppingList: async (menuItemId: string) => {
+    return request<{ items: ShoppingListItem[]; menuItem: MenuItem }>(`/menu/items/${menuItemId}/add-to-shopping-list`, {
+      method: 'POST',
+    })
+  },
+  addUncheckedMenuToShoppingList: async () => {
+    return request<{ items: ShoppingListItem[]; menuItems: MenuItem[] }>('/menu/add-to-shopping-list', {
+      method: 'POST',
+    })
   },
   updateProduct: async (itemId: string, input: { categoryId?: string | null; name?: string }) => {
     const response = await request<{ item: Product }>(`/items/${itemId}`, {

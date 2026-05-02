@@ -8,6 +8,7 @@ import { categoriesRoute } from './routes/categories.js'
 import { householdRoute } from './routes/household.js'
 import { inviteCodesRoute } from './routes/invite-codes.js'
 import { itemsRoute } from './routes/items.js'
+import { menuRoute } from './routes/menu.js'
 import { meRoute } from './routes/me.js'
 import { recipesRoute } from './routes/recipes.js'
 import { shoppingListRoute } from './routes/shopping-list.js'
@@ -47,6 +48,7 @@ app.route('/categories', categoriesRoute)
 app.route('/household', householdRoute)
 app.route('/invite-codes', inviteCodesRoute)
 app.route('/items', itemsRoute)
+app.route('/menu', menuRoute)
 app.route('/me', meRoute)
 app.route('/recipes', recipesRoute)
 app.route('/shopping-list', shoppingListRoute)

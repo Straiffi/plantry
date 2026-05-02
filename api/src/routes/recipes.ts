@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 
 import { getAuthenticatedUser, getCurrentHouseholdFromContext, readJsonBody } from '../lib/http.js'
 import type { AppEnv } from '../middleware/auth-session.js'
+import { menuService, MenuServiceError } from '../services/menu.js'
 import { recipeService, RecipeServiceError } from '../services/recipes.js'
 
 type ParsedRecipeItem = {
@@ -237,6 +238,32 @@ recipesRoute.post('/:id/add-to-shopping-list', async (context) => {
   } catch (error) {
     if (error instanceof RecipeServiceError) {
       return context.json({ message: error.message }, mapRecipeError(error))
+    }
+
+    throw error
+  }
+})
+
+recipesRoute.post('/:id/add-to-menu', async (context) => {
+  const user = getAuthenticatedUser(context)
+
+  if (!user) {
+    return context.json({ message: 'Unauthorized' }, 401)
+  }
+
+  const currentHousehold = getCurrentHouseholdFromContext(context)
+
+  if (!currentHousehold) {
+    return context.json({ message: 'Household not found' }, 404)
+  }
+
+  try {
+    const item = await menuService.addRecipeToMenu(currentHousehold.household.id, context.req.param('id'))
+
+    return context.json({ item })
+  } catch (error) {
+    if (error instanceof MenuServiceError) {
+      return context.json({ message: error.message }, 404)
     }
 
     throw error

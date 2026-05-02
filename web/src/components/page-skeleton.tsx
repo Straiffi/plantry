@@ -81,6 +81,21 @@ export const ShoppingListPageSkeleton = ({ title, titleClassName }: Props) => {
   )
 }
 
+export const MenuPageSkeleton = ({ title, titleClassName }: Props) => {
+  return (
+    <div className="space-y-8" data-testid="menu-page-skeleton">
+      <PageHeaderSkeleton actionWidth="w-72" title={title} titleClassName={titleClassName} />
+      <Card className="border-border/60 bg-card/90">
+        <CardContent className="space-y-4 p-4 sm:p-6">
+          <Skeleton className="h-16 w-full rounded-2xl" />
+          <Skeleton className="h-16 w-full rounded-2xl" />
+          <Skeleton className="h-16 w-full rounded-2xl" />
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 export const ProductsPageSkeleton = ({ title }: Props) => {
   return (
     <div className="space-y-8" data-testid="products-page-skeleton">

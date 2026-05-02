@@ -3,6 +3,7 @@ import { Outlet, createRootRoute, createRoute, createRouter } from '@tanstack/re
 import { AuthenticatedLayout } from '@/app/authenticated-layout'
 import { IndexPage } from '@/app/index-page'
 import { LoginPage } from '@/app/login-page'
+import { MenuPage } from '@/app/menu-page'
 import { ProductsPage } from '@/app/products-page'
 import { RecipeDetailPage } from '@/app/recipe-detail-page'
 import { RecipesPage } from '@/app/recipes-page'
@@ -43,6 +44,12 @@ const productsRoute = createRoute({
   path: '/products',
 })
 
+const menuRoute = createRoute({
+  component: MenuPage,
+  getParentRoute: () => appRoute,
+  path: '/menu',
+})
+
 const recipesRoute = createRoute({
   component: RecipesPage,
   getParentRoute: () => appRoute,
@@ -67,6 +74,7 @@ const routeTree = rootRoute.addChildren([
     indexRoute,
     shoppingListRoute,
     productsRoute,
+    menuRoute,
     recipesRoute,
     recipeDetailRoute,
     settingsRoute,

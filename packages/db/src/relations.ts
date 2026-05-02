@@ -8,6 +8,7 @@ import {
   itemCategories,
   itemTags,
   items,
+  menuItems,
   recipeItems,
   recipes,
   session,
@@ -45,6 +46,7 @@ export const householdRelations = relations(households, ({ many }) => ({
   categories: many(itemCategories),
   inviteCodes: many(inviteCodes),
   items: many(items),
+  menuItems: many(menuItems),
   members: many(householdMembers),
   recipes: many(recipes),
   shoppingListItems: many(shoppingListItems),
@@ -114,6 +116,7 @@ export const recipeRelations = relations(recipes, ({ many, one }) => ({
     fields: [recipes.householdId],
     references: [households.id],
   }),
+  menuItems: many(menuItems),
   recipeItems: many(recipeItems),
 }))
 
@@ -136,5 +139,16 @@ export const shoppingListItemRelations = relations(shoppingListItems, ({ one }) 
   item: one(items, {
     fields: [shoppingListItems.itemId],
     references: [items.id],
+  }),
+}))
+
+export const menuItemRelations = relations(menuItems, ({ one }) => ({
+  household: one(households, {
+    fields: [menuItems.householdId],
+    references: [households.id],
+  }),
+  recipe: one(recipes, {
+    fields: [menuItems.recipeId],
+    references: [recipes.id],
   }),
 }))

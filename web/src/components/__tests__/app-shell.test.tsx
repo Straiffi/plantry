@@ -57,6 +57,7 @@ describe('AppShell', () => {
     )
 
     expect(screen.getAllByText('Plantry')).toHaveLength(2)
+    expect(screen.getAllByRole('link', { name: 'Menu' })).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: 'Recipes' })).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: 'Shopping List' })).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: 'Products' })).toHaveLength(2)

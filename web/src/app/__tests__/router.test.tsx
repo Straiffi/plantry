@@ -17,6 +17,10 @@ vi.mock('@/app/login-page', () => ({
   LoginPage: () => <div>login-page</div>,
 }))
 
+vi.mock('@/app/menu-page', () => ({
+  MenuPage: () => <div>menu-page</div>,
+}))
+
 vi.mock('@/app/products-page', () => ({
   ProductsPage: () => <div>products-page</div>,
 }))
@@ -57,6 +61,12 @@ describe('router', () => {
     })
 
     expect(await screen.findByText('products-page')).toBeInTheDocument()
+
+    await act(async () => {
+      await router.navigate({ to: '/menu' })
+    })
+
+    expect(await screen.findByText('menu-page')).toBeInTheDocument()
 
     await act(async () => {
       await router.navigate({ to: '/recipes' })

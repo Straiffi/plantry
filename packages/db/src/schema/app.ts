@@ -93,6 +93,19 @@ export const recipeItems = pgTable('recipe_items', {
   recipeItemIndex: uniqueIndex('recipe_items_recipe_item_idx').on(table.recipeId, table.itemId),
 }))
 
+export const menuItems = pgTable('menu_items', {
+  checked: boolean('checked').default(false).notNull(),
+  checkedAt: timestamp('checked_at', { mode: 'date', withTimezone: true }),
+  createdAt: timestamp('created_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  householdId: text('household_id').notNull().references(() => households.id, { onDelete: 'cascade' }),
+  id: text('id').primaryKey().$defaultFn(createId),
+  lastAddedAt: timestamp('last_added_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+  recipeId: text('recipe_id').notNull().references(() => recipes.id, { onDelete: 'cascade' }),
+  updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  householdRecipeIndex: uniqueIndex('menu_items_household_recipe_idx').on(table.householdId, table.recipeId),
+}))
+
 export const shoppingListItems = pgTable('shopping_list_items', {
   checked: boolean('checked').default(false).notNull(),
   checkedAt: timestamp('checked_at', { mode: 'date', withTimezone: true }),
@@ -113,6 +126,7 @@ export const appSchema = {
   itemCategories,
   itemTags,
   items,
+  menuItems,
   recipeItems,
   recipes,
   shoppingListItems,
