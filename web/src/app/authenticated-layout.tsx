@@ -19,6 +19,12 @@ export const AuthenticatedLayout = () => {
     queryFn: api.getMe,
     queryKey: ['me'],
   })
+  useQuery({
+    enabled: Boolean(sessionState.data && meQuery.data?.household && meQuery.data.householdMembership),
+    queryFn: () => api.getProducts(false),
+    queryKey: ['products', 'active'],
+    staleTime: 300000,
+  })
 
   if (sessionState.isPending || (sessionState.data && meQuery.isPending)) {
     return <LoadingPage />

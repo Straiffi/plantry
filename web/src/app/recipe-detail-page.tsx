@@ -65,6 +65,7 @@ const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
     setPageError(null)
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['menu'] }),
+      queryClient.invalidateQueries({ queryKey: ['products', 'active'] }),
       queryClient.invalidateQueries({ queryKey: ['recipes'] }),
       queryClient.invalidateQueries({ queryKey: ['recipe', recipeId] }),
       queryClient.invalidateQueries({ queryKey: ['shopping-list'] }),

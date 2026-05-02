@@ -4,9 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ProductPickerField, type ProductSelection } from '@/components/product-picker-field'
-import { renderWithProviders } from '@/test/render'
+import { createTestQueryClient, renderWithProviders } from '@/test/render'
 
 const apiMock = vi.hoisted(() => ({
+  getProducts: vi.fn(),
   searchProducts: vi.fn(),
 }))
 
@@ -65,7 +66,22 @@ describe('ProductPickerField', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    apiMock.getProducts.mockResolvedValue([])
     apiMock.searchProducts.mockResolvedValue([])
+  })
+
+  it('uses preloaded active products for instant suggestions', async () => {
+    const queryClient = createTestQueryClient()
+    const user = userEvent.setup()
+
+    queryClient.setQueryData(['products', 'active'], [tomatoProduct])
+
+    renderWithProviders(<StatefulPicker />, queryClient)
+
+    await user.type(screen.getByPlaceholderText('Search or type a product name'), 'To')
+
+    expect(await screen.findByRole('button', { name: 'Tomato' })).toBeInTheDocument()
+    expect(apiMock.searchProducts).not.toHaveBeenCalled()
   })
 
   it('waits for the first search to settle before offering to create a product', async () => {

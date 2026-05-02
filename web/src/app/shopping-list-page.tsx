@@ -241,6 +241,15 @@ export const ShoppingListPage = () => {
     await queryClient.invalidateQueries({ queryKey: ['shopping-list'] })
   }
 
+  const refreshShoppingListAndProductSuggestions = async () => {
+    setPageError(null)
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['products', 'active'] }),
+      queryClient.invalidateQueries({ queryKey: ['product-search'] }),
+      queryClient.invalidateQueries({ queryKey: ['shopping-list'] }),
+    ])
+  }
+
   const handleMutationError = (error: unknown) => {
     if (error instanceof ApiError && error.status === 400) {
       setPageError(t('shoppingList.invalidInput'))
@@ -256,7 +265,7 @@ export const ShoppingListPage = () => {
     onSuccess: async () => {
       setDraftEntry(createDraftEntry())
       setDraftEntryVersion((currentValue) => currentValue + 1)
-      await refreshShoppingList()
+      await refreshShoppingListAndProductSuggestions()
     },
   })
   const toggleItemMutation = useMutation({

@@ -157,6 +157,7 @@ export const ProductsPage = () => {
   const invalidateCatalog = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['categories'] }),
+      queryClient.invalidateQueries({ queryKey: ['products', 'active'] }),
       queryClient.invalidateQueries({ queryKey: ['products', 'all'] }),
       queryClient.invalidateQueries({ queryKey: ['product-search'] }),
       queryClient.invalidateQueries({ queryKey: ['shopping-list'] }),
@@ -165,6 +166,7 @@ export const ProductsPage = () => {
 
   const invalidateCategoryDependents = async () => {
     await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['products', 'active'] }),
       queryClient.invalidateQueries({ queryKey: ['products', 'all'] }),
       queryClient.invalidateQueries({ queryKey: ['product-search'] }),
       queryClient.invalidateQueries({ queryKey: ['shopping-list'] }),

@@ -25,6 +25,23 @@ type Props = {
   value: string
 }
 
+const normalizeProductSearchValue = (value: string) => {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+const getCachedProductSuggestions = (products: Product[], query: string) => {
+  const normalizedQuery = normalizeProductSearchValue(query)
+
+  if (!normalizedQuery) {
+    return []
+  }
+
+  return [...products]
+    .filter((product) => product.normalizedName.startsWith(normalizedQuery))
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .slice(0, 8)
+}
+
 export const ProductPickerField = ({ autoFocus = false, disabled, instanceKey, loading = false, onSelectionChange, onValueChange, placeholder, value }: Props) => {
   const { t } = useTranslation()
   const deferredValue = useDeferredValue(value)
@@ -33,16 +50,25 @@ export const ProductPickerField = ({ autoFocus = false, disabled, instanceKey, l
   const [isFocused, setIsFocused] = useState(false)
   const trimmedValue = value.trim()
   const deferredTrimmedValue = deferredValue.trim()
+  const activeProductsQuery = useQuery({
+    enabled: false,
+    queryFn: () => api.getProducts(false),
+    queryKey: ['products', 'active'],
+  })
+  const cachedActiveProducts = activeProductsQuery.data ?? null
+  const hasCachedActiveProducts = cachedActiveProducts !== null
   const suggestionsQuery = useQuery({
-    enabled: deferredTrimmedValue.length > 0,
+    enabled: deferredTrimmedValue.length > 0 && !hasCachedActiveProducts,
     queryFn: () => api.searchProducts(deferredTrimmedValue),
     queryKey: ['product-search', deferredTrimmedValue],
   })
 
-  const normalizedValue = trimmedValue.toLowerCase()
-  const isCurrentSearchSettled = trimmedValue.length > 0 && deferredTrimmedValue === trimmedValue && !suggestionsQuery.isPending
-  const isSearchPending = trimmedValue.length > 0 && !isCurrentSearchSettled
-  const suggestions = isCurrentSearchSettled ? suggestionsQuery.data ?? [] : []
+  const normalizedValue = normalizeProductSearchValue(trimmedValue)
+  const isCurrentSearchSettled = hasCachedActiveProducts || (trimmedValue.length > 0 && deferredTrimmedValue === trimmedValue && !suggestionsQuery.isPending)
+  const isSearchPending = trimmedValue.length > 0 && !hasCachedActiveProducts && !isCurrentSearchSettled
+  const suggestions = hasCachedActiveProducts
+    ? getCachedProductSuggestions(cachedActiveProducts, trimmedValue)
+    : (isCurrentSearchSettled ? suggestionsQuery.data ?? [] : [])
   const exactMatchExists = suggestions.some((suggestion) => suggestion.name.trim().toLowerCase() === normalizedValue)
   const options: Option[] = suggestions.map((suggestion) => ({
     categoryName: suggestion.category?.name,

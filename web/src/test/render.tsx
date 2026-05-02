@@ -5,7 +5,7 @@ import { I18nextProvider } from 'react-i18next'
 
 import { i18n } from '@/i18n'
 
-const createTestQueryClient = () => {
+export const createTestQueryClient = () => {
   return new QueryClient({
     defaultOptions: {
       queries: {
@@ -15,8 +15,7 @@ const createTestQueryClient = () => {
   })
 }
 
-export const renderWithProviders = (ui: ReactElement) => {
-  const queryClient = createTestQueryClient()
+export const renderWithProviders = (ui: ReactElement, queryClient = createTestQueryClient()) => {
 
   return render(
     <I18nextProvider i18n={i18n}>
