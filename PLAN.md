@@ -45,6 +45,26 @@ This document defines the agreed architecture, scope, sequencing, and delivery p
 - [x] Build tag CRUD.
 - [x] Build item search/autocomplete.
 
+### Phase 5: Shopping List
+
+- [x] Build shopping list item CRUD.
+- [x] Add checkbox toggle behavior.
+- [x] Add `Delete checked items`.
+- [x] Add category-grouped list presentation.
+
+### Phase 6: Recipes
+
+- [x] Build recipe CRUD.
+- [x] Build recipe item rows and item autocomplete integration.
+- [x] Add `add recipe to shopping list` flow.
+
+### Phase 7: UI and Theme
+
+- [x] Build app shell and routing.
+- [x] Build mobile-first layouts.
+- [x] Apply the provided custom shadcn theme.
+- [x] Tune desktop layout.
+
 ## Product Summary
 
 Build a shared recipe and shopping list app with these core behaviors:
@@ -283,6 +303,7 @@ Constraint:
 - A recipe can exist with name only and zero recipe rows.
 - Recipe item quantities are integers in MVP.
 - A recipe references saved catalog items rather than storing its own free-text ingredient labels.
+- Recipe deletion currently uses hard delete semantics.
 
 ### Shopping List
 
@@ -293,6 +314,7 @@ Constraint:
 - If the row is checked and is added again, it should become unchecked and its `checked_at` cleared.
 - Checked rows remain visible until explicitly cleared.
 - `Delete checked items` removes checked shopping list rows for the current household.
+- `GET /api/shopping-list` currently returns both a flat `items` list and category-grouped `groups`.
 
 ## Autocomplete and Item Creation Flow
 
@@ -349,16 +371,16 @@ Constraint:
 - `GET /api/recipes/:id`
 - `POST /api/recipes`
 - `PATCH /api/recipes/:id`
-- `DELETE /api/recipes/:id` or archive later if desired
+- `DELETE /api/recipes/:id` using hard delete semantics in the current implementation
 - `POST /api/recipes/:id/add-to-shopping-list`
 
 ### Shopping List
 
-- `GET /api/shopping-list`
-- `POST /api/shopping-list/items`
+- `GET /api/shopping-list` returning `items` and category-grouped `groups`
+- `POST /api/shopping-list/items` supporting either `itemId` or free-text `name`, with optional `categoryId`
 - `PATCH /api/shopping-list/items/:shoppingListItemId`
 - `POST /api/shopping-list/items/:shoppingListItemId/toggle-checked`
-- `POST /api/shopping-list/delete-checked`
+- `POST /api/shopping-list/delete-checked` returning `deletedCount`
 - `DELETE /api/shopping-list/items/:shoppingListItemId`
 
 ## Backend Service Layer
@@ -379,10 +401,16 @@ Recommended service functions:
 - `addItemTag`
 - `deleteItemTag`
 - `searchItems`
+- `listRecipes`
+- `getRecipe`
 - `createRecipe`
 - `updateRecipe`
+- `deleteRecipe`
 - `addRecipeToShoppingList`
+- `getShoppingList`
 - `addItemToShoppingList`
+- `updateShoppingListItem`
+- `deleteShoppingListItem`
 - `toggleShoppingListItemChecked`
 - `deleteCheckedShoppingListItems`
 - `joinHouseholdByInviteCode`
@@ -429,6 +457,7 @@ These should contain domain behavior. Route handlers should stay thin.
 - Use shadcn/ui components as the base component system.
 - Apply the provided custom theme before final UI styling work begins.
 - Preserve the agreed mobile-first layout while adapting the theme.
+- The current frontend implementation uses a warm kitchen-oriented palette, serif display headings, bottom navigation on mobile, and a sidebar shell on desktop.
 
 ## Project Structure Recommendation
 
@@ -622,9 +651,8 @@ As implementation begins, verify in this order:
 
 ## Open Decisions
 
-- Confirm whether recipe deletion should be hard delete in MVP or archive
 - Confirm item search matching rules beyond prefix match, if fuzzy matching is desired later
 
 ## Immediate Next Step
 
-Phase 5 can begin next: shopping list item CRUD, checkbox toggling, bulk delete of checked rows, and category-grouped list presentation on top of the completed household and item-catalog foundation.
+Phase 8 can begin next: authorization coverage review, archive and inline-creation edge-case verification, and deployment/OAuth hardening on top of the completed app shell and backend foundation.

@@ -9,6 +9,8 @@ import { householdRoute } from './routes/household.js'
 import { inviteCodesRoute } from './routes/invite-codes.js'
 import { itemsRoute } from './routes/items.js'
 import { meRoute } from './routes/me.js'
+import { recipesRoute } from './routes/recipes.js'
+import { shoppingListRoute } from './routes/shopping-list.js'
 
 export const app = new Hono<AppEnv>().basePath('/api')
 
@@ -29,7 +31,7 @@ app.use('*', authSessionMiddleware)
 
 app.get('/', (context) => {
   return context.json({
-    message: 'Recipe App API phase 4 item catalog foundation is ready',
+    message: 'Recipe App API phase 6 recipe foundation is ready',
     status: 'ok',
   })
 })
@@ -46,3 +48,5 @@ app.route('/household', householdRoute)
 app.route('/invite-codes', inviteCodesRoute)
 app.route('/items', itemsRoute)
 app.route('/me', meRoute)
+app.route('/recipes', recipesRoute)
+app.route('/shopping-list', shoppingListRoute)

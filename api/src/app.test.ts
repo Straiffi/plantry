@@ -4,6 +4,8 @@ import { app } from './app.js'
 import { auth } from './lib/auth.js'
 import { householdService } from './services/household.js'
 import { ItemCatalogServiceError, itemCatalogService } from './services/item-catalog.js'
+import { recipeService, RecipeServiceError } from './services/recipes.js'
+import { shoppingListService, ShoppingListServiceError } from './services/shopping-list.js'
 
 const authenticatedSession = {
   session: {
@@ -55,6 +57,53 @@ const catalogItem = {
   normalizedName: 'tomato',
   tags: ['fresh'],
   updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+}
+
+const shoppingListItem = {
+  checked: false,
+  checkedAt: null,
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  householdId: 'household-1',
+  id: 'shopping-list-item-1',
+  item: {
+    archivedAt: null,
+    category: null,
+    categoryId: null,
+    id: 'item-1',
+    name: 'Tomato',
+  },
+  itemId: 'item-1',
+  quantity: 2,
+  updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+}
+
+const recipe = {
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  createdByUserId: 'user-1',
+  householdId: 'household-1',
+  id: 'recipe-1',
+  items: [
+    {
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      id: 'recipe-item-1',
+      item: {
+        archivedAt: null,
+        category: null,
+        categoryId: null,
+        id: 'item-1',
+        name: 'Tomato',
+      },
+      itemId: 'item-1',
+      quantity: 2,
+      recipeId: 'recipe-1',
+      sortOrder: 0,
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    },
+  ],
+  notes: 'Fresh pasta sauce',
+  recipeItems: [],
+  updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+  name: 'Tomato Pasta',
 }
 
 afterEach(() => {
@@ -354,5 +403,290 @@ describe('app', () => {
       limit: 5,
       query: 'to',
     })
+  })
+
+  it('returns grouped shopping list data for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const getShoppingListSpy = vi.spyOn(shoppingListService, 'getShoppingList').mockResolvedValue({
+      groups: [
+        {
+          category: null,
+          items: [shoppingListItem],
+        },
+      ],
+      items: [shoppingListItem],
+    })
+
+    const response = await app.request('http://localhost/api/shopping-list')
+
+    expect(response.status).toBe(200)
+    expect(getShoppingListSpy).toHaveBeenCalledWith('household-1')
+  })
+
+  it('adds shopping list items for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const addItemSpy = vi.spyOn(shoppingListService, 'addItemToShoppingList').mockResolvedValue(shoppingListItem)
+
+    const response = await app.request('http://localhost/api/shopping-list/items', {
+      body: JSON.stringify({
+        itemId: 'item-1',
+        quantity: 2,
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(201)
+    expect(addItemSpy).toHaveBeenCalledWith({
+      categoryId: undefined,
+      householdId: 'household-1',
+      itemId: 'item-1',
+      name: undefined,
+      quantity: 2,
+      userId: 'user-1',
+    })
+  })
+
+  it('updates shopping list quantities for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const updateListItemSpy = vi.spyOn(shoppingListService, 'updateShoppingListItem').mockResolvedValue(shoppingListItem)
+
+    const response = await app.request('http://localhost/api/shopping-list/items/shopping-list-item-1', {
+      body: JSON.stringify({
+        quantity: 3,
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+      method: 'PATCH',
+    })
+
+    expect(response.status).toBe(200)
+    expect(updateListItemSpy).toHaveBeenCalledWith({
+      householdId: 'household-1',
+      quantity: 3,
+      shoppingListItemId: 'shopping-list-item-1',
+    })
+  })
+
+  it('toggles shopping list rows for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const toggleCheckedSpy = vi.spyOn(shoppingListService, 'toggleShoppingListItemChecked').mockResolvedValue({
+      ...shoppingListItem,
+      checked: true,
+      checkedAt: new Date('2026-01-02T00:00:00.000Z'),
+    })
+
+    const response = await app.request('http://localhost/api/shopping-list/items/shopping-list-item-1/toggle-checked', {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(200)
+    expect(toggleCheckedSpy).toHaveBeenCalledWith('household-1', 'shopping-list-item-1')
+  })
+
+  it('deletes checked shopping list rows for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const deleteCheckedSpy = vi.spyOn(shoppingListService, 'deleteCheckedShoppingListItems').mockResolvedValue({
+      deletedCount: 2,
+    })
+
+    const response = await app.request('http://localhost/api/shopping-list/delete-checked', {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(200)
+    expect(deleteCheckedSpy).toHaveBeenCalledWith('household-1')
+  })
+
+  it('deletes a shopping list row for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const deleteListItemSpy = vi.spyOn(shoppingListService, 'deleteShoppingListItem').mockResolvedValue(undefined)
+
+    const response = await app.request('http://localhost/api/shopping-list/items/shopping-list-item-1', {
+      method: 'DELETE',
+    })
+
+    expect(response.status).toBe(204)
+    expect(deleteListItemSpy).toHaveBeenCalledWith('household-1', 'shopping-list-item-1')
+  })
+
+  it('maps missing shopping list rows to a not found response', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    vi.spyOn(shoppingListService, 'toggleShoppingListItemChecked').mockRejectedValue(
+      new ShoppingListServiceError('SHOPPING_LIST_ITEM_NOT_FOUND', 'Shopping list item not found'),
+    )
+
+    const response = await app.request('http://localhost/api/shopping-list/items/shopping-list-item-1/toggle-checked', {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(404)
+  })
+
+  it('creates recipes for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const createRecipeSpy = vi.spyOn(recipeService, 'createRecipe').mockResolvedValue(recipe)
+
+    const response = await app.request('http://localhost/api/recipes', {
+      body: JSON.stringify({
+        items: [
+          {
+            itemId: 'item-1',
+            quantity: 2,
+          },
+        ],
+        name: ' Tomato Pasta ',
+        notes: ' Fresh pasta sauce ',
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(201)
+    expect(createRecipeSpy).toHaveBeenCalledWith({
+      householdId: 'household-1',
+      items: [
+        {
+          categoryId: undefined,
+          itemId: 'item-1',
+          name: undefined,
+          quantity: 2,
+          sortOrder: undefined,
+        },
+      ],
+      name: ' Tomato Pasta ',
+      notes: ' Fresh pasta sauce ',
+      userId: 'user-1',
+    })
+  })
+
+  it('lists recipes for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const listRecipesSpy = vi.spyOn(recipeService, 'listRecipes').mockResolvedValue([recipe])
+
+    const response = await app.request('http://localhost/api/recipes')
+
+    expect(response.status).toBe(200)
+    expect(listRecipesSpy).toHaveBeenCalledWith('household-1')
+  })
+
+  it('gets a single recipe for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const getRecipeSpy = vi.spyOn(recipeService, 'getRecipe').mockResolvedValue(recipe)
+
+    const response = await app.request('http://localhost/api/recipes/recipe-1')
+
+    expect(response.status).toBe(200)
+    expect(getRecipeSpy).toHaveBeenCalledWith('household-1', 'recipe-1')
+  })
+
+  it('updates recipes for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const updateRecipeSpy = vi.spyOn(recipeService, 'updateRecipe').mockResolvedValue(recipe)
+
+    const response = await app.request('http://localhost/api/recipes/recipe-1', {
+      body: JSON.stringify({
+        items: [
+          {
+            name: ' Tomato ',
+            quantity: 3,
+          },
+        ],
+        notes: null,
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+      method: 'PATCH',
+    })
+
+    expect(response.status).toBe(200)
+    expect(updateRecipeSpy).toHaveBeenCalledWith({
+      householdId: 'household-1',
+      items: [
+        {
+          categoryId: undefined,
+          itemId: undefined,
+          name: ' Tomato ',
+          quantity: 3,
+          sortOrder: undefined,
+        },
+      ],
+      name: undefined,
+      notes: null,
+      recipeId: 'recipe-1',
+      userId: 'user-1',
+    })
+  })
+
+  it('adds recipe rows to the shopping list for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const addRecipeToShoppingListSpy = vi.spyOn(recipeService, 'addRecipeToShoppingList').mockResolvedValue({
+      items: [shoppingListItem],
+      recipe,
+    })
+
+    const response = await app.request('http://localhost/api/recipes/recipe-1/add-to-shopping-list', {
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(200)
+    expect(addRecipeToShoppingListSpy).toHaveBeenCalledWith('household-1', 'recipe-1', 'user-1')
+  })
+
+  it('deletes recipes for the authenticated household', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    const deleteRecipeSpy = vi.spyOn(recipeService, 'deleteRecipe').mockResolvedValue(undefined)
+
+    const response = await app.request('http://localhost/api/recipes/recipe-1', {
+      method: 'DELETE',
+    })
+
+    expect(response.status).toBe(204)
+    expect(deleteRecipeSpy).toHaveBeenCalledWith('household-1', 'recipe-1')
+  })
+
+  it('maps duplicate recipe rows to a conflict response', async () => {
+    vi.spyOn(auth.api, 'getSession').mockResolvedValue(authenticatedSession)
+    vi.spyOn(householdService, 'getCurrentHouseholdForUser').mockResolvedValue(currentHousehold)
+    vi.spyOn(recipeService, 'createRecipe').mockRejectedValue(
+      new RecipeServiceError('DUPLICATE_RECIPE_ITEM', 'Recipe items must be unique by item'),
+    )
+
+    const response = await app.request('http://localhost/api/recipes', {
+      body: JSON.stringify({
+        items: [
+          {
+            itemId: 'item-1',
+            quantity: 1,
+          },
+        ],
+        name: 'Pasta',
+      }),
+      headers: {
+        'content-type': 'application/json',
+      },
+      method: 'POST',
+    })
+
+    expect(response.status).toBe(409)
   })
 })
