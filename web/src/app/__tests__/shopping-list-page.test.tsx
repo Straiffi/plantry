@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ShoppingListPage } from '@/app/shopping-list-page'
+import type { ShoppingListItem } from '@/lib/api'
 import { renderWithProviders } from '@/test/render'
 
 const apiMock = vi.hoisted(() => ({
@@ -31,7 +32,7 @@ vi.mock('@/lib/api', () => {
   }
 })
 
-const shoppingListItem = {
+const shoppingListItem: ShoppingListItem = {
   checked: false,
   checkedAt: null,
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -47,6 +48,18 @@ const shoppingListItem = {
   itemId: 'item-1',
   quantity: 1,
   updatedAt: '2026-01-01T00:00:00.000Z',
+}
+
+const createDeferred = <T,>() => {
+  let reject!: (reason?: unknown) => void
+  let resolve!: (value: T | PromiseLike<T>) => void
+
+  const promise = new Promise<T>((innerResolve, innerReject) => {
+    reject = innerReject
+    resolve = innerResolve
+  })
+
+  return { promise, reject, resolve }
 }
 
 describe('ShoppingListPage', () => {
@@ -258,28 +271,55 @@ describe('ShoppingListPage', () => {
     expect(screen.getAllByText('Produce')).toHaveLength(1)
   })
 
-  it('shows a pending state while toggling an item', async () => {
+  it('optimistically toggles an item while the request is pending', async () => {
     const user = userEvent.setup()
-    let resolveToggle!: (value: typeof shoppingListItem | PromiseLike<typeof shoppingListItem>) => void
+    const deferredToggle = createDeferred<typeof shoppingListItem>()
 
     apiMock.getShoppingList.mockResolvedValue({
       groups: [{ category: null, items: [shoppingListItem] }],
       items: [shoppingListItem],
     })
-    apiMock.toggleShoppingListItem.mockImplementationOnce(() => new Promise((resolve) => {
-      resolveToggle = resolve
-    }))
+    apiMock.toggleShoppingListItem.mockImplementationOnce(() => deferredToggle.promise)
 
     renderWithProviders(<ShoppingListPage />)
 
     await user.click(await screen.findByRole('button', { name: 'Toggle checked state' }))
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Toggle checked state' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'Toggle checked state' })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('button', { name: 'Toggle checked state' })).toBeDisabled()
+    expect(screen.getByText('Tomato')).toHaveClass('line-through')
+
+    deferredToggle.resolve({
+      ...shoppingListItem,
+      checked: true,
+      checkedAt: '2026-01-04T00:00:00.000Z',
     })
 
-    resolveToggle(shoppingListItem)
+    await waitFor(() => {
+      expect(screen.getByText('Tomato')).toHaveClass('line-through')
+    })
+  })
+
+  it('rolls shopping list items back when the toggle request fails', async () => {
+    const deferredToggle = createDeferred<typeof shoppingListItem>()
+    const user = userEvent.setup()
+
+    apiMock.getShoppingList.mockResolvedValue({
+      groups: [{ category: null, items: [shoppingListItem] }],
+      items: [shoppingListItem],
+    })
+    apiMock.toggleShoppingListItem.mockImplementationOnce(() => deferredToggle.promise)
+
+    renderWithProviders(<ShoppingListPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Toggle checked state' }))
+
+    expect(screen.getByText('Tomato')).toHaveClass('line-through')
+
+    deferredToggle.reject(new Error('Request failed'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Tomato')).not.toHaveClass('line-through')
+    })
   })
 
   it('toggles an item when clicking its card content', async () => {

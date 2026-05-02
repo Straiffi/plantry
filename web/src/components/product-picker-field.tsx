@@ -31,15 +31,18 @@ export const ProductPickerField = ({ autoFocus = false, disabled, instanceKey, l
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const [isFocused, setIsFocused] = useState(false)
+  const trimmedValue = value.trim()
+  const deferredTrimmedValue = deferredValue.trim()
   const suggestionsQuery = useQuery({
-    enabled: deferredValue.trim().length > 0,
-    queryFn: () => api.searchProducts(deferredValue.trim()),
-    queryKey: ['product-search', deferredValue.trim()],
+    enabled: deferredTrimmedValue.length > 0,
+    queryFn: () => api.searchProducts(deferredTrimmedValue),
+    queryKey: ['product-search', deferredTrimmedValue],
   })
 
-  const trimmedValue = value.trim()
   const normalizedValue = trimmedValue.toLowerCase()
-  const suggestions = suggestionsQuery.data ?? []
+  const isCurrentSearchSettled = trimmedValue.length > 0 && deferredTrimmedValue === trimmedValue && !suggestionsQuery.isPending
+  const isSearchPending = trimmedValue.length > 0 && !isCurrentSearchSettled
+  const suggestions = isCurrentSearchSettled ? suggestionsQuery.data ?? [] : []
   const exactMatchExists = suggestions.some((suggestion) => suggestion.name.trim().toLowerCase() === normalizedValue)
   const options: Option[] = suggestions.map((suggestion) => ({
     categoryName: suggestion.category?.name,
@@ -47,7 +50,7 @@ export const ProductPickerField = ({ autoFocus = false, disabled, instanceKey, l
     type: 'existing',
   }))
 
-  if (trimmedValue && !exactMatchExists) {
+  if (isCurrentSearchSettled && trimmedValue && !exactMatchExists) {
     options.push({
       label: t('productPicker.createProduct', { name: trimmedValue }),
       name: trimmedValue,
@@ -56,6 +59,7 @@ export const ProductPickerField = ({ autoFocus = false, disabled, instanceKey, l
   }
 
   const showSuggestions = isFocused && trimmedValue.length > 0 && options.length > 0
+  const showLoading = loading || isSearchPending
 
   const handleSelectOption = (option: Option) => {
     setActiveIndex(0)
@@ -80,11 +84,11 @@ export const ProductPickerField = ({ autoFocus = false, disabled, instanceKey, l
   return (
     <div className="relative min-w-0 flex-1" ref={containerRef}>
       <Search className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
-      {loading && <LoaderCircle aria-hidden className="pointer-events-none absolute right-3 top-1/2 z-10 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+      {showLoading && <LoaderCircle aria-hidden className="pointer-events-none absolute right-3 top-1/2 z-10 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
       <Input
         autoFocus={autoFocus}
-        aria-busy={loading || undefined}
-        className={loading ? 'pl-9 pr-9' : 'pl-9'}
+        aria-busy={showLoading || undefined}
+        className={showLoading ? 'pl-9 pr-9' : 'pl-9'}
         disabled={disabled}
         key={instanceKey}
         onBlur={handleBlur}

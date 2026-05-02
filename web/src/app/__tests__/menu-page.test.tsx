@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { MenuPage } from '@/app/menu-page'
+import type { MenuItem } from '@/lib/api'
 import { renderWithProviders } from '@/test/render'
 
 const apiMock = vi.hoisted(() => ({
@@ -29,7 +30,7 @@ vi.mock('@/lib/api', () => {
   }
 })
 
-const menuItem = {
+const menuItem: MenuItem = {
   checked: false,
   checkedAt: null,
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -67,13 +68,15 @@ const menuItem = {
 }
 
 const createDeferred = <T,>() => {
+  let reject!: (reason?: unknown) => void
   let resolve!: (value: T | PromiseLike<T>) => void
 
-  const promise = new Promise<T>((innerResolve) => {
+  const promise = new Promise<T>((innerResolve, innerReject) => {
+    reject = innerReject
     resolve = innerResolve
   })
 
-  return { promise, resolve }
+  return { promise, reject, resolve }
 }
 
 describe('MenuPage', () => {
@@ -136,6 +139,47 @@ describe('MenuPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Toggle checked state' }))
 
     expect(apiMock.toggleMenuItemChecked).toHaveBeenCalledWith('menu-item-1')
+  })
+
+  it('optimistically toggles menu items without waiting for the server response', async () => {
+    const deferredToggle = createDeferred<typeof menuItem>()
+    const user = userEvent.setup()
+
+    apiMock.getMenu.mockResolvedValue({ items: [menuItem] })
+    apiMock.toggleMenuItemChecked.mockImplementationOnce(() => deferredToggle.promise)
+
+    renderWithProviders(<MenuPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Toggle checked state' }))
+
+    expect(screen.getByText('Pasta')).toHaveClass('line-through')
+    expect(screen.getByRole('button', { name: 'Toggle checked state' })).toBeDisabled()
+
+    deferredToggle.resolve({ ...menuItem, checked: true, checkedAt: '2026-01-04T00:00:00.000Z' })
+
+    await waitFor(() => {
+      expect(screen.getByText('Pasta')).toHaveClass('line-through')
+    })
+  })
+
+  it('rolls menu items back when the toggle request fails', async () => {
+    const deferredToggle = createDeferred<typeof menuItem>()
+    const user = userEvent.setup()
+
+    apiMock.getMenu.mockResolvedValue({ items: [menuItem] })
+    apiMock.toggleMenuItemChecked.mockImplementationOnce(() => deferredToggle.promise)
+
+    renderWithProviders(<MenuPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Toggle checked state' }))
+
+    expect(screen.getByText('Pasta')).toHaveClass('line-through')
+
+    deferredToggle.reject(new Error('Request failed'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Pasta')).not.toHaveClass('line-through')
+    })
   })
 
   it('adds a single menu recipe to the shopping list from the expanded row', async () => {

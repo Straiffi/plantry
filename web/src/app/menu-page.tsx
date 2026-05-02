@@ -11,6 +11,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 
+type MenuQueryData = Awaited<ReturnType<typeof api.getMenu>>
+
+type ToggleMenuItemMutationContext = {
+  previousMenu?: MenuQueryData
+}
+
 type MenuRowProps = {
   isAddToShoppingListPending: boolean
   isExpanded: boolean
@@ -21,13 +27,44 @@ type MenuRowProps = {
   onToggleExpanded: (menuItemId: string) => void
 }
 
+const toggleMenuItemInCache = (menu: MenuQueryData | undefined, menuItemId: string, updatedAt: string) => {
+  if (!menu) {
+    return menu
+  }
+
+  return {
+    items: menu.items.map((item) => {
+      if (item.id !== menuItemId) {
+        return item
+      }
+
+      return {
+        ...item,
+        checked: !item.checked,
+        checkedAt: item.checked ? null : updatedAt,
+        updatedAt,
+      }
+    }),
+  }
+}
+
+const mergeMenuItemInCache = (menu: MenuQueryData | undefined, updatedItem: MenuItem) => {
+  if (!menu) {
+    return menu
+  }
+
+  return {
+    items: menu.items.map((item) => item.id === updatedItem.id ? updatedItem : item),
+  }
+}
+
 const MenuRow = ({ isAddToShoppingListPending, isExpanded, item, isTogglePending, onAddToShoppingList, onToggleChecked, onToggleExpanded }: MenuRowProps) => {
   const { t } = useTranslation()
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/75">
       <div className="flex items-center gap-2 px-2.5 py-2.5 sm:gap-3 sm:px-3 sm:py-3">
-        <Button aria-label={t('menu.toggleItem')} className="shrink-0" loading={isTogglePending} onClick={() => onToggleChecked(item.id)} size="icon-sm" type="button" variant="ghost">
+        <Button aria-busy={isTogglePending || undefined} aria-label={t('menu.toggleItem')} className="shrink-0" disabled={isTogglePending} onClick={() => onToggleChecked(item.id)} size="icon-sm" type="button" variant="ghost">
           {item.checked ? <CheckCircle2 className="size-5" /> : <Circle className="size-5" />}
         </Button>
 
@@ -83,11 +120,6 @@ export const MenuPage = () => {
     queryKey: ['menu'],
   })
 
-  const refreshMenu = async () => {
-    setPageError(null)
-    await queryClient.invalidateQueries({ queryKey: ['menu'] })
-  }
-
   const refreshMenuAndRecipes = async () => {
     setPageError(null)
     await Promise.all([
@@ -113,7 +145,22 @@ export const MenuPage = () => {
   const toggleMenuItemMutation = useMutation({
     mutationKey: ['menu', 'toggle-item'],
     mutationFn: (menuItemId: string) => api.toggleMenuItemChecked(menuItemId),
-    onSuccess: refreshMenu,
+    onError: (error, _menuItemId, context: ToggleMenuItemMutationContext | undefined) => {
+      queryClient.setQueryData(['menu'], context?.previousMenu)
+      handleMutationError(error)
+    },
+    onMutate: async (menuItemId) => {
+      setPageError(null)
+      await queryClient.cancelQueries({ queryKey: ['menu'] })
+      const previousMenu = queryClient.getQueryData<MenuQueryData>(['menu'])
+
+      queryClient.setQueryData<MenuQueryData>(['menu'], (currentMenu) => toggleMenuItemInCache(currentMenu, menuItemId, new Date().toISOString()))
+
+      return { previousMenu } satisfies ToggleMenuItemMutationContext
+    },
+    onSuccess: (updatedItem) => {
+      queryClient.setQueryData<MenuQueryData>(['menu'], (currentMenu) => mergeMenuItemInCache(currentMenu, updatedItem))
+    },
   })
   const deleteCheckedMutation = useMutation({
     mutationKey: ['menu', 'delete-checked'],

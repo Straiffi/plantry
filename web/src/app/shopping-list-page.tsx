@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Circle, LoaderCircle, Plus, Trash2 } from 'lucide-react'
+import { CheckCircle2, Circle, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { api, ApiError, type ShoppingListItem } from '@/lib/api'
+import { api, ApiError, type ShoppingListGroup, type ShoppingListItem } from '@/lib/api'
 import { ShoppingListPageSkeleton } from '@/components/page-skeleton'
 import { PageHeader } from '@/components/page-header'
 import { ProductPickerField, type ProductSelection } from '@/components/product-picker-field'
@@ -11,6 +11,12 @@ import { QuantityStepper } from '@/components/quantity-stepper'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+
+type ShoppingListQueryData = Awaited<ReturnType<typeof api.getShoppingList>>
+
+type ToggleShoppingListItemMutationContext = {
+  previousShoppingList?: ShoppingListQueryData
+}
 
 type DraftEntry = {
   name: string
@@ -40,6 +46,95 @@ type ShoppingListDraftRowProps = {
   onQuantityChange: (quantity: number) => void
   onSelectionChange: (selection: ProductSelection) => void
   onValueChange: (value: string) => void
+}
+
+const sortShoppingListGroups = (groups: ShoppingListGroup[]) => {
+  return groups.sort((left, right) => {
+    const leftCategory = left.category
+    const rightCategory = right.category
+
+    if (leftCategory === null && rightCategory !== null) {
+      return 1
+    }
+
+    if (leftCategory !== null && rightCategory === null) {
+      return -1
+    }
+
+    if (leftCategory === null || rightCategory === null) {
+      return 0
+    }
+
+    if (leftCategory.sortOrder !== rightCategory.sortOrder) {
+      return leftCategory.sortOrder - rightCategory.sortOrder
+    }
+
+    return leftCategory.name.localeCompare(rightCategory.name)
+  })
+}
+
+const buildShoppingListGroups = (items: ShoppingListItem[]) => {
+  const groupMap = new Map<string, ShoppingListGroup>()
+
+  for (const item of items) {
+    const category = item.item.category
+    const groupKey = category?.id ?? 'uncategorized'
+    const existingGroup = groupMap.get(groupKey)
+
+    if (existingGroup) {
+      existingGroup.items.push(item)
+      continue
+    }
+
+    groupMap.set(groupKey, {
+      category,
+      items: [item],
+    })
+  }
+
+  return sortShoppingListGroups(Array.from(groupMap.values()))
+}
+
+const updateShoppingListCache = (shoppingList: ShoppingListQueryData | undefined, nextItems: ShoppingListItem[]) => {
+  if (!shoppingList) {
+    return shoppingList
+  }
+
+  return {
+    groups: buildShoppingListGroups(nextItems),
+    items: nextItems,
+  }
+}
+
+const toggleShoppingListItemInCache = (shoppingList: ShoppingListQueryData | undefined, shoppingListItemId: string, updatedAt: string) => {
+  if (!shoppingList) {
+    return shoppingList
+  }
+
+  const nextItems = shoppingList.items.map((item) => {
+    if (item.id !== shoppingListItemId) {
+      return item
+    }
+
+    return {
+      ...item,
+      checked: !item.checked,
+      checkedAt: item.checked ? null : updatedAt,
+      updatedAt,
+    }
+  })
+
+  return updateShoppingListCache(shoppingList, nextItems)
+}
+
+const mergeShoppingListItemInCache = (shoppingList: ShoppingListQueryData | undefined, updatedItem: ShoppingListItem) => {
+  if (!shoppingList) {
+    return shoppingList
+  }
+
+  const nextItems = shoppingList.items.map((item) => item.id === updatedItem.id ? updatedItem : item)
+
+  return updateShoppingListCache(shoppingList, nextItems)
 }
 
 const createDraftEntry = (): DraftEntry => {
@@ -74,10 +169,7 @@ const ShoppingListRow = ({ isDecrementPending, isDeletePending, isIncrementPendi
         onClick={() => onToggle(item.id)}
         type="button"
       >
-        <span className="inline-flex shrink-0 items-center justify-center">
-          {isTogglePending && <LoaderCircle aria-hidden className="size-5 animate-spin" />}
-          {!isTogglePending && (item.checked ? <CheckCircle2 className="size-5" /> : <Circle className="size-5" />)}
-        </span>
+        <span className="inline-flex shrink-0 items-center justify-center">{item.checked ? <CheckCircle2 className="size-5" /> : <Circle className="size-5" />}</span>
 
         <div className="min-w-0 flex-1">
           <p className={`text-sm font-medium sm:text-base ${item.checked ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{item.item.name}</p>
@@ -170,7 +262,22 @@ export const ShoppingListPage = () => {
   const toggleItemMutation = useMutation({
     mutationKey: ['shopping-list', 'toggle-item'],
     mutationFn: (shoppingListItemId: string) => api.toggleShoppingListItem(shoppingListItemId),
-    onSuccess: refreshShoppingList,
+    onError: (error, _shoppingListItemId, context: ToggleShoppingListItemMutationContext | undefined) => {
+      queryClient.setQueryData(['shopping-list'], context?.previousShoppingList)
+      handleMutationError(error)
+    },
+    onMutate: async (shoppingListItemId) => {
+      setPageError(null)
+      await queryClient.cancelQueries({ queryKey: ['shopping-list'] })
+      const previousShoppingList = queryClient.getQueryData<ShoppingListQueryData>(['shopping-list'])
+
+      queryClient.setQueryData<ShoppingListQueryData>(['shopping-list'], (currentShoppingList) => toggleShoppingListItemInCache(currentShoppingList, shoppingListItemId, new Date().toISOString()))
+
+      return { previousShoppingList } satisfies ToggleShoppingListItemMutationContext
+    },
+    onSuccess: (updatedItem) => {
+      queryClient.setQueryData<ShoppingListQueryData>(['shopping-list'], (currentShoppingList) => mergeShoppingListItemInCache(currentShoppingList, updatedItem))
+    },
   })
   const updateItemMutation = useMutation({
     mutationKey: ['shopping-list', 'update-item'],
