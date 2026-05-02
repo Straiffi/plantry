@@ -11,7 +11,6 @@ export const resources = {
       auth: {
         description: 'Keep your household grocery list, product catalog, and recipe bank in sync across every shared device.',
         googleButton: 'Continue with Google',
-        helper: 'Google sign-in keeps the app lightweight while making shared household access simple to manage.',
         highlights: {
           catalog: {
             description: 'Build one reusable household product catalog with categories, tags, and archive controls.',

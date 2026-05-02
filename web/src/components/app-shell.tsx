@@ -57,10 +57,7 @@ export const AppShell = ({ children }: Props) => {
     <div className="min-h-svh bg-background">
       <div className="mx-auto flex min-h-svh w-full max-w-7xl flex-col lg:flex-row lg:px-4">
         <aside className="hidden w-80 shrink-0 lg:flex lg:flex-col lg:gap-6 lg:px-4 lg:py-6">
-          <div className="rounded-3xl border border-border/60 bg-card p-6">
-            <p className="text-sm font-medium text-primary">{t('app.name')}</p>
-            <h1 className="mt-3 font-heading text-3xl tracking-tight text-foreground">{t('shell.title')}</h1>
-          </div>
+          <p className="px-2 text-sm font-medium text-primary">{t('app.name')}</p>
 
           <div className="rounded-3xl border border-border/60 bg-card p-4">
             <div className="mb-4 flex items-center justify-between gap-3 px-2">

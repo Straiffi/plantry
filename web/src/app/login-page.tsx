@@ -96,7 +96,6 @@ export const LoginPage = () => {
             <Button className="h-12 w-full rounded-xl text-base" disabled={isSigningIn} onClick={handleSignIn}>
               {isSigningIn ? t('auth.signingIn') : t('auth.googleButton')}
             </Button>
-            <p className="text-sm leading-6 text-muted-foreground">{t('auth.helper')}</p>
           </CardContent>
         </Card>
       </div>
