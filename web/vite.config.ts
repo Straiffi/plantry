@@ -4,6 +4,10 @@ import path from 'node:path'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  build: {
+    emptyOutDir: true,
+    outDir: '../public',
+  },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
