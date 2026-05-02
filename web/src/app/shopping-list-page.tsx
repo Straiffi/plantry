@@ -9,7 +9,9 @@ import { PageHeader } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 type DraftEntry = {
   itemId?: string
@@ -26,11 +28,13 @@ type ShoppingListRowProps = {
 }
 
 const ShoppingListRow = ({ item, onDecrease, onDelete, onIncrease, onToggle }: ShoppingListRowProps) => {
+  const { t } = useTranslation()
+
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-background/75 px-3 py-3">
-      <button className="shrink-0 text-primary" onClick={() => onToggle(item.id)} type="button">
+      <Button aria-label={t('shoppingList.toggleItem')} className="shrink-0" onClick={() => onToggle(item.id)} size="icon-sm" type="button" variant="ghost">
         {item.checked ? <CheckCircle2 className="size-5" /> : <Circle className="size-5" />}
-      </button>
+      </Button>
 
       <div className="min-w-0 flex-1">
         <p className={`font-medium ${item.checked ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{item.item.name}</p>
@@ -47,7 +51,7 @@ const ShoppingListRow = ({ item, onDecrease, onDelete, onIncrease, onToggle }: S
         </Button>
       </div>
 
-      <Button onClick={() => onDelete(item.id)} size="sm" type="button" variant="ghost">
+      <Button aria-label={t('shoppingList.removeItem')} onClick={() => onDelete(item.id)} size="icon-sm" type="button" variant="ghost">
         <Trash2 className="size-4" />
       </Button>
     </div>
@@ -133,13 +137,29 @@ export const ShoppingListPage = () => {
     <div className="space-y-8">
       <PageHeader
         actions={
-          <Button
-            disabled={checkedCount === 0 || deleteCheckedMutation.isPending}
-            onClick={() => deleteCheckedMutation.mutate(undefined, { onError: handleMutationError })}
-            variant="outline"
-          >
-            {t('shoppingList.deleteChecked')}
-          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button disabled={checkedCount === 0 || deleteCheckedMutation.isPending} variant="outline">
+                {t('shoppingList.deleteChecked')}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t('shoppingList.deleteCheckedTitle')}</DialogTitle>
+                <DialogDescription>{t('shoppingList.deleteCheckedDescription')}</DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button onClick={() => deleteCheckedMutation.mutate(undefined, { onError: handleMutationError })} type="button" variant="destructive">
+                    {t('shoppingList.deleteCheckedConfirm')}
+                  </Button>
+                </DialogClose>
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">{t('shoppingList.cancel')}</Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         }
         description={t('shoppingList.description')}
         title={t('shoppingList.title')}
@@ -165,16 +185,21 @@ export const ShoppingListPage = () => {
           />
 
           <div className="grid gap-3 sm:grid-cols-[112px_auto]">
-            <Input
-              min={1}
-              onChange={(event) => setDraftEntry((currentValue) => ({
-                ...currentValue,
-                quantity: Number.parseInt(event.target.value, 10) || 1,
-              }))}
-              type="number"
-              value={String(draftEntry.quantity)}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="shopping-list-quantity">{t('shoppingList.quantityLabel')}</Label>
+              <Input
+                id="shopping-list-quantity"
+                min={1}
+                onChange={(event) => setDraftEntry((currentValue) => ({
+                  ...currentValue,
+                  quantity: Number.parseInt(event.target.value, 10) || 1,
+                }))}
+                type="number"
+                value={String(draftEntry.quantity)}
+              />
+            </div>
             <Button
+              className="self-end"
               disabled={addItemMutation.isPending || !draftEntry.name.trim()}
               onClick={() => addItemMutation.mutate(undefined, { onError: handleMutationError })}
               type="button"

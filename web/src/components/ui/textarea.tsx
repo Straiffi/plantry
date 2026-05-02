@@ -8,9 +8,10 @@ export const Textarea = ({ className, ...props }: Props) => {
   return (
     <textarea
       className={cn(
-        'flex min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+        'flex field-sizing-content min-h-16 w-full resize-none border border-transparent border-b-input bg-transparent px-0 py-3 text-base transition-[color,border-color] outline-none placeholder:text-muted-foreground focus-visible:border-b-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-b-destructive md:text-sm dark:aria-invalid:border-b-destructive/50',
         className,
       )}
+      data-slot="textarea"
       {...props}
     />
   )

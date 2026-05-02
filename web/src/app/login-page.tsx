@@ -41,7 +41,7 @@ export const LoginPage = () => {
 
     try {
       await authClient.signIn.social({
-        callbackURL: `${window.location.origin}/shopping-list`,
+        callbackURL: '/shopping-list',
         provider: 'google',
       })
     } finally {
@@ -50,7 +50,7 @@ export const LoginPage = () => {
   }
 
   return (
-    <div className="min-h-svh bg-[radial-gradient(circle_at_top_left,_rgba(176,104,54,0.16),_transparent_34%),radial-gradient(circle_at_bottom_right,_rgba(79,109,70,0.16),_transparent_32%),var(--background)] px-4 py-8 sm:px-6 lg:px-10">
+    <div className="min-h-svh bg-background px-4 py-8 sm:px-6 lg:px-10">
       <div className="mx-auto grid min-h-[calc(100svh-4rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.15fr_0.85fr]">
         <section className="space-y-6">
           <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
@@ -58,7 +58,7 @@ export const LoginPage = () => {
           </div>
 
           <div className="space-y-4">
-            <h1 className="max-w-3xl font-serif text-4xl leading-none tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-3xl font-heading text-4xl leading-none tracking-tight text-foreground sm:text-5xl lg:text-6xl">
               {t('auth.title')}
             </h1>
             <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
@@ -71,7 +71,7 @@ export const LoginPage = () => {
               const Icon = highlight.icon
 
               return (
-                <Card key={highlight.key} className="border-border/60 bg-card/80 shadow-[0_12px_40px_rgba(62,44,32,0.06)] backdrop-blur">
+                <Card key={highlight.key} className="border-border/60 bg-card/90">
                   <CardHeader className="pb-3">
                     <div className="mb-3 flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                       <Icon className="size-5" />
@@ -87,9 +87,9 @@ export const LoginPage = () => {
           </div>
         </section>
 
-        <Card className="border-border/60 bg-card/92 shadow-[0_24px_80px_rgba(62,44,32,0.12)] backdrop-blur">
+        <Card className="border-border/60 bg-card/95">
           <CardHeader className="space-y-3">
-            <CardTitle className="font-serif text-3xl">{t('auth.panelTitle')}</CardTitle>
+            <CardTitle className="font-heading text-3xl">{t('auth.panelTitle')}</CardTitle>
             <CardDescription className="text-base leading-7">{t('auth.panelDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">

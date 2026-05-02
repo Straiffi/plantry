@@ -5,7 +5,7 @@ import type { ButtonHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap border border-transparent text-xs font-semibold uppercase tracking-widest transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=size-])]:size-3.5',
   {
     defaultVariants: {
       size: 'default',
@@ -13,16 +13,20 @@ const buttonVariants = cva(
     },
     variants: {
       size: {
-        default: 'h-9 px-4 py-2',
-        icon: 'size-9',
-        lg: 'h-10 rounded-md px-6',
-        sm: 'h-8 rounded-md px-3 text-xs',
+        default: 'h-10 gap-1.5 px-6',
+        icon: 'size-10',
+        'icon-sm': 'size-9',
+        lg: 'h-11 gap-1.5 px-8',
+        sm: 'h-9 gap-1 px-4',
+        xs: 'h-7 gap-1 px-3 [&_svg:not([class*=size-])]:size-3',
       },
       variant: {
-        default: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        outline: 'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground',
-        secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
+        default: 'bg-primary text-primary-foreground hover:bg-primary/80',
+        destructive: 'bg-destructive/10 text-destructive hover:bg-destructive/20',
+        ghost: 'hover:bg-muted hover:text-foreground',
+        link: 'text-primary underline underline-offset-4 hover:underline',
+        outline: 'border-border bg-transparent hover:bg-muted hover:text-foreground',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
       },
     },
   },
@@ -36,11 +40,11 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> &
 export const Button = ({
   asChild = false,
   className,
-  size,
-  variant,
+  size = 'default',
+  variant = 'default',
   ...props
 }: Props) => {
   const Comp = asChild ? Slot : 'button'
 
-  return <Comp className={cn(buttonVariants({ className, size, variant }))} {...props} />
+  return <Comp className={cn(buttonVariants({ className, size, variant }))} data-size={size} data-variant={variant} {...props} />
 }

@@ -1,9 +1,12 @@
 import { useDeferredValue } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Check, Search } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { api, type Product } from '@/lib/api'
+import { Command, CommandEmpty, CommandItem, CommandList } from '@/components/ui/command'
 import { Input } from '@/components/ui/input'
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -14,6 +17,7 @@ type Props = {
 }
 
 export const ItemAutocompleteField = ({ onChange, onSelectSuggestion, placeholder, value }: Props) => {
+  const { t } = useTranslation()
   const deferredValue = useDeferredValue(value)
   const suggestionsQuery = useQuery({
     enabled: deferredValue.trim().length > 0,
@@ -22,42 +26,45 @@ export const ItemAutocompleteField = ({ onChange, onSelectSuggestion, placeholde
   })
 
   const suggestions = suggestionsQuery.data ?? []
-  const showSuggestions = deferredValue.trim().length > 0 && suggestions.length > 0
+  const showSuggestions = deferredValue.trim().length > 0
 
   return (
-    <div className="relative space-y-2">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input className="pl-9" onChange={(event) => onChange(event.target.value)} placeholder={placeholder} value={value} />
-      </div>
-
-      {showSuggestions && (
-        <div className="rounded-2xl border border-border/60 bg-card/95 p-2 shadow-[0_18px_48px_rgba(62,44,32,0.08)] backdrop-blur">
-          <div className="space-y-1">
-            {suggestions.map((suggestion) => {
-              const isSelected = suggestion.name === value
-
-              return (
-                <button
-                  className={cn(
-                    'flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-primary/8',
-                    isSelected && 'bg-primary/8 text-primary',
-                  )}
-                  key={suggestion.id}
-                  onClick={() => onSelectSuggestion(suggestion)}
-                  type="button"
-                >
-                  <div>
-                    <p className="font-medium text-foreground">{suggestion.name}</p>
-                    {suggestion.category && <p className="text-xs text-muted-foreground">{suggestion.category.name}</p>}
-                  </div>
-                  {isSelected && <Check className="size-4" />}
-                </button>
-              )
-            })}
+    <Popover open={showSuggestions}>
+      <div className="relative space-y-2">
+        <PopoverAnchor asChild>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-0 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="pl-7" onChange={(event) => onChange(event.target.value)} placeholder={placeholder} value={value} />
           </div>
-        </div>
-      )}
-    </div>
+        </PopoverAnchor>
+
+        {showSuggestions && (
+          <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-1">
+            <Command shouldFilter={false}>
+              <CommandList>
+                {suggestions.length === 0 && <CommandEmpty>{t('products.searchEmpty')}</CommandEmpty>}
+                {suggestions.map((suggestion) => {
+                  const isSelected = suggestion.name === value
+
+                  return (
+                    <CommandItem
+                      className={cn(isSelected && 'bg-muted text-foreground')}
+                      key={suggestion.id}
+                      onSelect={() => onSelectSuggestion(suggestion)}
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">{suggestion.name}</p>
+                        {suggestion.category && <p className="text-xs text-muted-foreground">{suggestion.category.name}</p>}
+                      </div>
+                      {isSelected && <Check className="ml-auto size-4" />}
+                    </CommandItem>
+                  )
+                })}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        )}
+      </div>
+    </Popover>
   )
 }

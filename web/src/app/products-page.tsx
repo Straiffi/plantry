@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 type ProductCardProps = {
   categories: Category[]
@@ -56,15 +58,17 @@ const ProductCard = ({ categories, onArchive, onDeleteTag, onRestore, onTagSubmi
         <div className="flex flex-wrap gap-2">
           {product.tags.length === 0 && <Badge variant="outline">{t('products.noTags')}</Badge>}
           {product.tags.map((tag) => (
-            <button
-              className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+            <Button
+              className="h-7 gap-1 px-2.5"
               key={tag}
               onClick={() => onDeleteTag(product.id, tag)}
+              size="xs"
               type="button"
+              variant="outline"
             >
               <Tags className="size-3" />
               <span>{tag}</span>
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -229,19 +233,26 @@ export const ProductsPage = () => {
               <CardDescription>{t('products.createDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Input onChange={(event) => setProductName(event.target.value)} placeholder={t('products.productPlaceholder')} value={productName} />
-              <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onChange={(event) => setProductCategoryId(event.target.value)}
-                value={productCategoryId}
-              >
-                <option value="">{t('products.uncategorized')}</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+              <div className="space-y-2">
+                <Label htmlFor="product-name">{t('products.productLabel')}</Label>
+                <Input id="product-name" onChange={(event) => setProductName(event.target.value)} placeholder={t('products.productPlaceholder')} value={productName} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="product-category">{t('products.categoryLabel')}</Label>
+                <Select onValueChange={setProductCategoryId} value={productCategoryId || 'uncategorized'}>
+                  <SelectTrigger className="w-full" id="product-category">
+                    <SelectValue placeholder={t('products.uncategorized')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="uncategorized">{t('products.uncategorized')}</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button
                 className="w-full"
                 disabled={createProductMutation.isPending}

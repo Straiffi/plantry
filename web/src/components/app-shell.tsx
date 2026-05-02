@@ -53,16 +53,16 @@ export const AppShell = ({ children }: Props) => {
   const { household, householdMembership, user } = useAppContext()
 
   return (
-    <div className="min-h-svh bg-[radial-gradient(circle_at_top,_rgba(176,104,54,0.12),_transparent_38%),radial-gradient(circle_at_bottom_right,_rgba(79,109,70,0.12),_transparent_32%),var(--background)]">
+    <div className="min-h-svh bg-background">
       <div className="mx-auto flex min-h-svh w-full max-w-7xl flex-col lg:flex-row lg:px-4">
         <aside className="hidden w-80 shrink-0 lg:flex lg:flex-col lg:gap-6 lg:px-4 lg:py-6">
-          <div className="rounded-[2rem] border border-border/60 bg-card/88 p-6 shadow-[0_24px_70px_rgba(62,44,32,0.08)] backdrop-blur">
+          <div className="rounded-3xl border border-border/60 bg-card p-6">
             <p className="text-sm font-medium text-primary">{t('app.name')}</p>
-            <h1 className="mt-3 font-serif text-3xl tracking-tight text-foreground">{t('shell.title')}</h1>
+            <h1 className="mt-3 font-heading text-3xl tracking-tight text-foreground">{t('shell.title')}</h1>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">{t('shell.description')}</p>
           </div>
 
-          <div className="rounded-[2rem] border border-border/60 bg-card/88 p-4 shadow-[0_24px_70px_rgba(62,44,32,0.08)] backdrop-blur">
+          <div className="rounded-3xl border border-border/60 bg-card p-4">
             <div className="mb-4 flex items-center justify-between gap-3 px-2">
               <div>
                 <p className="text-sm font-semibold text-foreground">{household?.name ?? t('shell.noHousehold')}</p>
@@ -80,10 +80,10 @@ export const AppShell = ({ children }: Props) => {
         </aside>
 
         <div className="flex min-h-svh flex-1 flex-col">
-          <header className="sticky top-0 z-20 border-b border-border/60 bg-background/82 backdrop-blur lg:hidden">
+          <header className="sticky top-0 z-20 border-b border-border/60 bg-background lg:hidden">
             <div className="flex items-center justify-between px-4 py-4 sm:px-6">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{t('app.name')}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-primary">{t('app.name')}</p>
                 <p className="text-sm text-muted-foreground">{household?.name ?? t('shell.noHousehold')}</p>
               </div>
               {householdMembership && <Badge variant="outline">{t('shell.roleLabel', { role: householdMembership.role })}</Badge>}
@@ -94,7 +94,7 @@ export const AppShell = ({ children }: Props) => {
             <div className="mx-auto w-full max-w-6xl">{children}</div>
           </main>
 
-          <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/92 px-3 py-3 backdrop-blur lg:hidden">
+          <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background px-3 py-3 lg:hidden">
             <div className="mx-auto grid max-w-xl grid-cols-4 gap-2">
               {navSections.map((section) => (
                 <NavItem isActive={pathname.startsWith(section.href)} key={section.href} section={section} />
