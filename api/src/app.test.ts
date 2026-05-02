@@ -180,9 +180,11 @@ afterEach(() => {
 
 describe('app', () => {
   it('returns an ok health response', async () => {
+    const getSessionSpy = vi.spyOn(auth.api, 'getSession').mockRejectedValue(new Error('health should bypass auth middleware'))
     const response = await app.request('http://localhost/api/health')
 
     expect(response.status).toBe(200)
+    expect(getSessionSpy).not.toHaveBeenCalled()
     await expect(response.json()).resolves.toEqual({
       service: 'api',
       status: 'ok',

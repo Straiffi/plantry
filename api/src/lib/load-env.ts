@@ -4,6 +4,13 @@ import { fileURLToPath } from 'node:url'
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url))
 
+type LoadEnvironmentFilesOptions = {
+  envFileLoader?: ((filePath: string) => void) | null | undefined
+  envLocalPath?: string
+  envPath?: string
+  fileExists?: (filePath: string) => boolean
+}
+
 const findRepositoryRoot = () => {
   let directory = currentDirectory
 
@@ -27,11 +34,32 @@ const repositoryRoot = findRepositoryRoot()
 const envLocalPath = path.join(repositoryRoot, '.env.local')
 const envPath = path.join(repositoryRoot, '.env')
 
-// Shell-provided environment variables should win over file values.
-if (existsSync(envLocalPath)) {
-  process.loadEnvFile(envLocalPath)
+const createLoadEnvFile = () => {
+  return typeof process.loadEnvFile === 'function'
+    ? process.loadEnvFile.bind(process)
+    : undefined
 }
 
-if (existsSync(envPath)) {
-  process.loadEnvFile(envPath)
+export const loadEnvironmentFiles = (options: LoadEnvironmentFilesOptions = {}) => {
+  const envFileLoader = options.envFileLoader === undefined
+    ? createLoadEnvFile()
+    : options.envFileLoader
+  const localPath = options.envLocalPath ?? envLocalPath
+  const defaultPath = options.envPath ?? envPath
+  const fileExists = options.fileExists ?? existsSync
+
+  if (!envFileLoader) {
+    return
+  }
+
+  // Shell-provided environment variables should win over file values.
+  if (fileExists(localPath)) {
+    envFileLoader(localPath)
+  }
+
+  if (fileExists(defaultPath)) {
+    envFileLoader(defaultPath)
+  }
 }
+
+loadEnvironmentFiles()

@@ -14,6 +14,13 @@ import { shoppingListRoute } from './routes/shopping-list.js'
 
 export const app = new Hono<AppEnv>().basePath('/api')
 
+app.get('/health', (context) => {
+  return context.json({
+    service: 'api',
+    status: 'ok',
+  })
+})
+
 app.use('/auth/*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
   allowMethods: ['GET', 'POST', 'OPTIONS'],
@@ -32,13 +39,6 @@ app.use('*', authSessionMiddleware)
 app.get('/', (context) => {
   return context.json({
     message: 'Recipe App API is ready',
-    status: 'ok',
-  })
-})
-
-app.get('/health', (context) => {
-  return context.json({
-    service: 'api',
     status: 'ok',
   })
 })
