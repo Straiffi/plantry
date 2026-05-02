@@ -71,15 +71,12 @@ export const SettingsPage = () => {
 
                 {(householdMembersQuery.data ?? []).map((member) => (
                   <div className="rounded-2xl border border-border/60 bg-background/70 px-4 py-3" key={member.id}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2 text-foreground">
-                          <p className="font-medium">{member.user.name}</p>
-                          {member.userId === user.id && <Badge variant="outline">{t('settings.youLabel')}</Badge>}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{member.user.email}</p>
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2 text-foreground">
+                        <p className="font-medium">{member.user.name}</p>
+                        {member.userId === user.id && <Badge variant="outline">{t('settings.youLabel')}</Badge>}
                       </div>
-                      <Badge variant="outline">{t('settings.roleLabel', { role: member.role })}</Badge>
+                      <p className="text-sm text-muted-foreground">{member.user.email}</p>
                     </div>
                   </div>
                 ))}
@@ -90,7 +87,6 @@ export const SettingsPage = () => {
           <Card>
             <CardHeader>
               <CardTitle>{t('settings.accountTitle')}</CardTitle>
-              <CardDescription>{t('settings.accountDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3 text-sm">
@@ -125,13 +121,10 @@ export const SettingsPage = () => {
                 <div className="rounded-2xl border border-border/60 bg-background/70 px-4 py-3" key={inviteCode.id}>
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-mono text-sm font-semibold tracking-[0.25em] text-foreground">{inviteCode.code}</p>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{t('settings.inviteReady')}</Badge>
-                      <Button onClick={() => void handleCopyInviteCode(inviteCode.code)} size="xs" type="button" variant="outline">
-                        <Copy className="size-3.5" />
-                        <span>{t('settings.copyInviteCode')}</span>
-                      </Button>
-                    </div>
+                    <Button onClick={() => void handleCopyInviteCode(inviteCode.code)} size="xs" type="button" variant="outline">
+                      <Copy className="size-3.5" />
+                      <span>{t('settings.copyInviteCode')}</span>
+                    </Button>
                   </div>
                 </div>
               ))}
