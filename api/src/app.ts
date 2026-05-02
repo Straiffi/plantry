@@ -4,6 +4,10 @@ import { cors } from 'hono/cors'
 import { appOrigin } from './lib/env.js'
 import { auth } from './lib/auth.js'
 import { authSessionMiddleware, type AppEnv } from './middleware/auth-session.js'
+import { categoriesRoute } from './routes/categories.js'
+import { householdRoute } from './routes/household.js'
+import { inviteCodesRoute } from './routes/invite-codes.js'
+import { itemsRoute } from './routes/items.js'
 import { meRoute } from './routes/me.js'
 
 export const app = new Hono<AppEnv>().basePath('/api')
@@ -25,7 +29,7 @@ app.use('*', authSessionMiddleware)
 
 app.get('/', (context) => {
   return context.json({
-    message: 'Recipe App API phase 2 foundation is ready',
+    message: 'Recipe App API phase 4 item catalog foundation is ready',
     status: 'ok',
   })
 })
@@ -37,4 +41,8 @@ app.get('/health', (context) => {
   })
 })
 
+app.route('/categories', categoriesRoute)
+app.route('/household', householdRoute)
+app.route('/invite-codes', inviteCodesRoute)
+app.route('/items', itemsRoute)
 app.route('/me', meRoute)

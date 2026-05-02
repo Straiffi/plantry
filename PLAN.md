@@ -2,9 +2,17 @@
 
 ## Status
 
-This document defines the agreed architecture, scope, sequencing, and delivery plan before implementation begins.
+This document defines the agreed architecture, scope, sequencing, and delivery plan, and tracks implementation progress as work lands.
 
 ## Progress
+
+### Pre-Phase 3 Quality Pass
+
+- [x] Set up Vitest-based tests for `web` and `api`.
+- [x] Fix current frontend lint issues without weakening ESLint rules.
+- [x] Add frontend localization infrastructure with `i18next` and `react-i18next`.
+- [x] Move non-placeholder customer-facing web strings into localization resources.
+- [x] Rename the visible `Items` UI section to `Products` while keeping internal domain/API naming as `items`.
 
 ### Phase 1: Project Setup
 
@@ -22,6 +30,20 @@ This document defines the agreed architecture, scope, sequencing, and delivery p
 - [x] Add migrations.
 - [x] Integrate Better Auth with Google OAuth.
 - [x] Add auth/session middleware.
+
+### Phase 3: Household and Authorization
+
+- [x] Create household model and membership checks.
+- [x] Add invite code generation and join flow.
+- [x] Add `GET /api/me` and current household resolution.
+
+### Phase 4: Item Catalog
+
+- [x] Build item categories.
+- [x] Build item CRUD.
+- [x] Build archive/restore.
+- [x] Build tag CRUD.
+- [x] Build item search/autocomplete.
 
 ## Product Summary
 
@@ -58,6 +80,8 @@ Build a shared recipe and shopping list app with these core behaviors:
 - TypeScript
 - TanStack Router
 - TanStack Query
+- i18next
+- react-i18next
 - shadcn/ui
 - lucide-react
 - Custom theme to be applied before UI implementation begins
@@ -151,7 +175,7 @@ Additional app-level tables:
 - `code`
 - `created_by_user_id`
 - `expires_at` nullable
-- `used_at` nullable depending on final invite policy
+- `used_at` nullable and set when a single-use invite code is redeemed
 - `created_at`
 
 ### Item Catalog
@@ -242,6 +266,8 @@ Constraint:
 - A user belongs to one household in MVP.
 - A household can have multiple members.
 - Shared data is always scoped to the household.
+- Invite codes are single-use in the current implementation.
+- `GET /api/me` returns the authenticated user together with current household and membership when present.
 
 ### Items
 
@@ -250,6 +276,7 @@ Constraint:
 - Inline item creation should only happen on explicit submit or selection, not on every keystroke.
 - Archived items should be hidden from normal browsing and autocomplete.
 - If an archived item becomes actively used again, prefer auto-unarchive on reuse.
+- Category deletion currently blocks while any items still reference that category.
 
 ### Recipes
 
@@ -279,15 +306,16 @@ Constraint:
 
 - Search should use household scope.
 - Search should exclude archived items by default.
-- Item normalization should likely be lowercase + trimmed whitespace.
+- Item normalization is lowercase with trimmed and collapsed whitespace.
 - Item creation from free text must enforce the unique normalized-name constraint.
+- Search currently uses normalized prefix matching.
 
 ## API Plan
 
 ### Auth
 
 - Better Auth routes mounted under `/api/auth/*`
-- Session-aware `GET /api/me`
+- Session-aware `GET /api/me` returning `session`, `user`, `household`, and `householdMembership`
 
 ### Household
 
@@ -302,12 +330,12 @@ Constraint:
 - `GET /api/categories`
 - `POST /api/categories`
 - `PATCH /api/categories/:id`
-- `DELETE /api/categories/:id` if safe
+- `DELETE /api/categories/:id` blocking deletion while items still reference that category
 
 ### Items
 
-- `GET /api/items`
-- `GET /api/items/search`
+- `GET /api/items` with optional `includeArchived=true`
+- `GET /api/items/search` using `q` and optional `limit`
 - `POST /api/items`
 - `PATCH /api/items/:id`
 - `POST /api/items/:id/archive`
@@ -339,10 +367,17 @@ Recommended service functions:
 
 - `getCurrentHouseholdForUser`
 - `assertHouseholdMembership`
+- `createCategory`
+- `updateCategory`
+- `deleteCategory`
 - `normalizeItemName`
 - `findOrCreateItem`
+- `createItem`
+- `updateItem`
 - `archiveItem`
 - `restoreItem`
+- `addItemTag`
+- `deleteItemTag`
 - `searchItems`
 - `createRecipe`
 - `updateRecipe`
@@ -362,7 +397,7 @@ These should contain domain behavior. Route handlers should stay thin.
 - Recipes list
 - Recipe editor/detail
 - Shopping list
-- Items
+- Products
 - Settings
 
 ### Mobile-First UX
@@ -385,7 +420,7 @@ These should contain domain behavior. Route handlers should stay thin.
 - Recipe list and cards
 - Recipe item editor rows
 - Shopping list grouped sections
-- Items catalog table/list
+- Products catalog table/list
 - Category and tag editors
 - Dialog for clearing checked items
 
@@ -585,13 +620,11 @@ As implementation begins, verify in this order:
 - Multi-household membership per user
 - Public sharing links
 
-## Open Decisions Before Scaffolding
+## Open Decisions
 
-- Confirm exact repo structure preference: monorepo-style folders or flatter root layout
-- Confirm whether category deletion should reassign items to uncategorized or block deletion when in use
 - Confirm whether recipe deletion should be hard delete in MVP or archive
 - Confirm item search matching rules beyond prefix match, if fuzzy matching is desired later
 
 ## Immediate Next Step
 
-Phase 3 can begin next: household model wiring, invite code flow, `GET /api/me` expansion, and household-aware authorization helpers on top of the completed database/auth foundation.
+Phase 5 can begin next: shopping list item CRUD, checkbox toggling, bulk delete of checked rows, and category-grouped list presentation on top of the completed household and item-catalog foundation.
