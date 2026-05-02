@@ -51,7 +51,7 @@ const NavItem = ({ isActive, section }: NavItemProps) => {
 export const AppShell = ({ children }: Props) => {
   const { t } = useTranslation()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
-  const { household, householdMembership, user } = useAppContext()
+  const { household, user } = useAppContext()
 
   return (
     <div className="min-h-svh bg-background">
@@ -63,7 +63,6 @@ export const AppShell = ({ children }: Props) => {
             <div className="mb-4 flex items-center justify-between gap-3 px-2">
               <div>
                 <p className="text-sm font-semibold text-foreground">{household?.name ?? t('shell.noHousehold')}</p>
-                {householdMembership && <p className="text-xs text-muted-foreground">{t('shell.roleLabel', { role: householdMembership.role })}</p>}
               </div>
               <Badge variant="outline">{user.name}</Badge>
             </div>

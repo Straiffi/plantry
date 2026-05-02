@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useParams } from '@tanstack/react-router'
+import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Save, Send, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -48,6 +48,7 @@ type RecipeDetailEditorProps = {
 
 const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { recipeId } = useParams({ from: '/app/recipes/$recipeId' })
   const queryClient = useQueryClient()
   const [name, setName] = useState(recipe.name)
@@ -63,6 +64,7 @@ const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
   const refreshRecipes = async () => {
     setPageError(null)
     await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['menu'] }),
       queryClient.invalidateQueries({ queryKey: ['recipes'] }),
       queryClient.invalidateQueries({ queryKey: ['recipe', recipeId] }),
       queryClient.invalidateQueries({ queryKey: ['shopping-list'] }),
@@ -93,7 +95,7 @@ const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
     }),
     onSuccess: async () => {
       await refreshRecipes()
-      window.location.assign('/recipes')
+      await navigate({ replace: true, to: '/recipes' })
     },
   })
   const addToShoppingListMutation = useMutation({
@@ -106,10 +108,11 @@ const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
     mutationFn: () => api.deleteRecipe(recipeId),
     onSuccess: async () => {
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['menu'] }),
         queryClient.invalidateQueries({ queryKey: ['recipes'] }),
         queryClient.invalidateQueries({ queryKey: ['shopping-list'] }),
       ])
-      window.location.assign('/recipes')
+      await navigate({ replace: true, to: '/recipes' })
     },
   })
   const isRecipeActionPending = updateRecipeMutation.isPending || addToShoppingListMutation.isPending || deleteRecipeMutation.isPending
@@ -119,7 +122,7 @@ const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
       <PageHeader
         actions={
           <Button asChild variant="outline">
-            <Link to="/recipes">{t('recipes.backToRecipes')}</Link>
+            <Link replace to="/recipes">{t('recipes.backToRecipes')}</Link>
           </Button>
         }
         title={recipe.name}

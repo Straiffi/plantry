@@ -123,7 +123,9 @@ describe('SettingsPage', () => {
     expect(screen.getByText('See who currently has access to this household.')).toBeInTheDocument()
     expect(screen.getByText('sous@example.com')).toBeInTheDocument()
     expect(screen.getByText('You')).toBeInTheDocument()
+    expect(screen.getByText('owner')).toBeInTheDocument()
     expect(screen.queryByText('member member')).not.toBeInTheDocument()
+    expect(screen.queryByText('owner member')).not.toBeInTheDocument()
     expect(apiMock.getHouseholdMembers).toHaveBeenCalledTimes(1)
   })
 

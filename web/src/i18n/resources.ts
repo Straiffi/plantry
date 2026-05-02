@@ -152,7 +152,7 @@ export const resources = {
         membersTitle: 'Household members',
         noHousehold: 'No household connected yet',
         noInvites: 'No invite codes yet. Generate one when someone else is ready to join.',
-        roleLabel: '{{role}} member',
+        roleLabel: '{{role}}',
         signOut: 'Sign out',
         title: 'Settings',
         youLabel: 'You',
