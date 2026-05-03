@@ -236,6 +236,58 @@ describe('RecipesPage', () => {
     expect(screen.queryByRole('button', { name: 'Add to shopping list' })).not.toBeInTheDocument()
   })
 
+  it('filters recipes by recipe name and restores the full list when cleared', async () => {
+    const user = userEvent.setup()
+
+    apiMock.getRecipes.mockResolvedValue(recipes)
+
+    renderWithProviders(<RecipesPage />)
+
+    expect(await screen.findByText('Pasta')).toBeInTheDocument()
+    expect(screen.getByText('Salad')).toBeInTheDocument()
+
+    await user.type(screen.getByRole('textbox', { name: 'Search recipes' }), 'PAST')
+
+    expect(screen.getByText('Pasta')).toBeInTheDocument()
+    expect(screen.queryByText('Salad')).not.toBeInTheDocument()
+
+    await user.clear(screen.getByRole('textbox', { name: 'Search recipes' }))
+
+    expect(screen.getByText('Pasta')).toBeInTheDocument()
+    expect(screen.getByText('Salad')).toBeInTheDocument()
+  })
+
+  it('filters recipes by product name', async () => {
+    const user = userEvent.setup()
+
+    apiMock.getRecipes.mockResolvedValue(recipes)
+
+    renderWithProviders(<RecipesPage />)
+
+    expect(await screen.findByText('Pasta')).toBeInTheDocument()
+
+    await user.type(screen.getByRole('textbox', { name: 'Search recipes' }), 'toma')
+
+    expect(screen.getByText('Pasta')).toBeInTheDocument()
+    expect(screen.queryByText('Salad')).not.toBeInTheDocument()
+  })
+
+  it('shows a search empty state when no recipes match', async () => {
+    const user = userEvent.setup()
+
+    apiMock.getRecipes.mockResolvedValue(recipes)
+
+    renderWithProviders(<RecipesPage />)
+
+    expect(await screen.findByText('Pasta')).toBeInTheDocument()
+
+    await user.type(screen.getByRole('textbox', { name: 'Search recipes' }), 'garlic')
+
+    expect(screen.getByText('No recipes match that search yet.')).toBeInTheDocument()
+    expect(screen.queryByText('Pasta')).not.toBeInTheDocument()
+    expect(screen.queryByText('Salad')).not.toBeInTheDocument()
+  })
+
   it('adds recipes to the menu from the quick card action', async () => {
     const user = userEvent.setup()
 

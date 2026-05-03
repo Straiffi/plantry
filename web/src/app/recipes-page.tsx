@@ -94,6 +94,24 @@ const sortRecipes = (recipes: Recipe[], sortValue: SortValue) => {
   })
 }
 
+const normalizeRecipeSearchValue = (value: string) => {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+const matchesRecipeSearch = (recipe: Recipe, query: string) => {
+  const normalizedQuery = normalizeRecipeSearchValue(query)
+
+  if (!normalizedQuery) {
+    return true
+  }
+
+  if (normalizeRecipeSearchValue(recipe.name).includes(normalizedQuery)) {
+    return true
+  }
+
+  return recipe.items.some((item) => normalizeRecipeSearchValue(item.item.name).includes(normalizedQuery))
+}
+
 const RecipeSummaryCard = ({ isAddToMenuPending, isAddToShoppingListPending, isDeletePending, isExpanded, onAddToMenu, onAddToShoppingList, onDelete, onToggle, recipe }: RecipeSummaryCardProps) => {
   const { t } = useTranslation()
   const lastAddedLabel = getRecipeSortLabel(recipe, t)
@@ -160,6 +178,7 @@ export const RecipesPage = () => {
   const [autoFocusItemId, setAutoFocusItemId] = useState<string | null>(null)
   const [expandedRecipeId, setExpandedRecipeId] = useState<string | null>(null)
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false)
+  const [searchValue, setSearchValue] = useState('')
   const [sortValue, setSortValue] = useState<SortValue>('name-asc')
   const queryClient = useQueryClient()
   const [name, setName] = useState('')
@@ -244,6 +263,12 @@ export const RecipesPage = () => {
     select: (mutation) => mutation.state.variables as string,
   })
 
+  const filteredRecipes = (recipesQuery.data ?? []).filter((recipe) => matchesRecipeSearch(recipe, searchValue))
+  const recipes = sortRecipes(filteredRecipes, sortValue)
+  const hasRecipes = (recipesQuery.data ?? []).length > 0
+  const hasActiveSearch = normalizeRecipeSearchValue(searchValue).length > 0
+  const visibleExpandedRecipeId = recipes.some((recipe) => recipe.id === expandedRecipeId) ? expandedRecipeId : null
+
   if (recipesQuery.isPending) {
     return <RecipesPageSkeleton title={t('recipes.title')} />
   }
@@ -267,8 +292,6 @@ export const RecipesPage = () => {
     setAutoFocusItemId(appendedItem?.id ?? null)
   }
 
-  const recipes = sortRecipes(recipesQuery.data ?? [], sortValue)
-
   return (
     <div className="space-y-8">
       <PageHeader
@@ -283,7 +306,14 @@ export const RecipesPage = () => {
       )}
 
       <div className="space-y-6">
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Input
+            aria-label={t('recipes.searchLabel')}
+            className="sm:max-w-md"
+            onChange={(event) => setSearchValue(event.target.value)}
+            placeholder={t('recipes.searchPlaceholder')}
+            value={searchValue}
+          />
           <Select onValueChange={(value) => setSortValue(value as SortValue)} value={sortValue}>
             <SelectTrigger aria-label={t('recipes.sortBy')} className="min-w-52">
               <SelectValue placeholder={t('recipes.sortBy')} />
@@ -327,9 +357,15 @@ export const RecipesPage = () => {
           </Card>
         )}
 
-        {recipes.length === 0 && (
+        {!hasRecipes && (
           <Card>
             <CardContent className="p-6 text-sm text-muted-foreground">{t('recipes.empty')}</CardContent>
+          </Card>
+        )}
+
+        {hasRecipes && recipes.length === 0 && hasActiveSearch && (
+          <Card>
+            <CardContent className="p-6 text-sm text-muted-foreground">{t('recipes.emptySearch')}</CardContent>
           </Card>
         )}
 
@@ -338,7 +374,7 @@ export const RecipesPage = () => {
             isAddToMenuPending={pendingAddToMenuRecipeIds.includes(recipe.id)}
             isAddToShoppingListPending={pendingAddToShoppingListRecipeIds.includes(recipe.id)}
             isDeletePending={pendingDeletedRecipeIds.includes(recipe.id)}
-            isExpanded={expandedRecipeId === recipe.id}
+            isExpanded={visibleExpandedRecipeId === recipe.id}
             key={recipe.id}
             onAddToMenu={(recipeId) => addRecipeToMenuMutation.mutate(recipeId, { onError: handleMutationError })}
             onAddToShoppingList={(recipeId) => addRecipeToShoppingListMutation.mutate(recipeId, { onError: handleMutationError })}

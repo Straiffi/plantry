@@ -100,6 +100,7 @@ export const resources = {
         duplicateItemError: 'Each recipe row has to reference a different product.',
         empty: 'No recipes yet. Build a few go-to meals to speed up grocery planning.',
         emptyDetail: 'That recipe could not be loaded.',
+        emptySearch: 'No recipes match that search yet.',
         form: {
           itemPlaceholder: 'Search or type a product name',
           removeItem: 'Remove row',
@@ -113,6 +114,8 @@ export const resources = {
         noNotes: 'No notes yet',
         notesPlaceholder: 'Add cooking notes, timing reminders, or serving details',
         openRecipe: 'Open recipe',
+        searchLabel: 'Search recipes',
+        searchPlaceholder: 'Search recipes or products',
         saveRecipe: 'Save recipe',
         sortBy: 'Sort recipes',
         sortMenuDateAsc: 'Menu date, oldest first',
