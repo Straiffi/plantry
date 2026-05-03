@@ -278,7 +278,17 @@ export const ProductsPage = () => {
 
   const categories = categoriesQuery.data ?? []
   const products = productsQuery.data ?? []
-  const visibleProducts = products.filter((product) => (showArchived ? product.archivedAt !== null : product.archivedAt === null))
+  const visibleProducts = products
+    .filter((product) => (showArchived ? product.archivedAt !== null : product.archivedAt === null))
+    .sort((left, right) => {
+      const createdAtDifference = Date.parse(right.createdAt) - Date.parse(left.createdAt)
+
+      if (createdAtDifference !== 0) {
+        return createdAtDifference
+      }
+
+      return left.name.localeCompare(right.name)
+    })
   const activeCategory = activeCategoryId
     ? categories.find((category) => category.id === activeCategoryId) ?? null
     : null

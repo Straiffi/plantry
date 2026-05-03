@@ -174,6 +174,59 @@ describe('ProductsPage', () => {
     expect(screen.queryByText('fresh')).not.toBeInTheDocument()
   })
 
+  it('renders products newest first by createdAt', async () => {
+    apiMock.getProducts.mockResolvedValue([
+      {
+        archivedAt: null,
+        category: null,
+        categoryId: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        createdByUserId: 'user-1',
+        householdId: 'household-1',
+        id: 'item-1',
+        name: 'Tomato',
+        normalizedName: 'tomato',
+        tags: [],
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        archivedAt: null,
+        category: null,
+        categoryId: null,
+        createdAt: '2026-01-03T00:00:00.000Z',
+        createdByUserId: 'user-1',
+        householdId: 'household-1',
+        id: 'item-2',
+        name: 'Apple',
+        normalizedName: 'apple',
+        tags: [],
+        updatedAt: '2026-01-03T00:00:00.000Z',
+      },
+      {
+        archivedAt: null,
+        category: null,
+        categoryId: null,
+        createdAt: '2026-01-02T00:00:00.000Z',
+        createdByUserId: 'user-1',
+        householdId: 'household-1',
+        id: 'item-3',
+        name: 'Bread',
+        normalizedName: 'bread',
+        tags: [],
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      },
+    ])
+
+    renderWithProviders(<ProductsPage />)
+
+    const apple = await screen.findByText('Apple')
+    const bread = screen.getByText('Bread')
+    const tomato = screen.getByText('Tomato')
+
+    expect(apple.compareDocumentPosition(bread) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(bread.compareDocumentPosition(tomato) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('updates the category from the product card', async () => {
     const user = userEvent.setup()
 
