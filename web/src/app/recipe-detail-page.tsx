@@ -61,9 +61,9 @@ const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
   })))
   const [pageError, setPageError] = useState<string | null>(null)
 
-  const refreshRecipes = async () => {
+  const refreshRecipes = () => {
     setPageError(null)
-    await Promise.all([
+    void Promise.all([
       queryClient.invalidateQueries({ queryKey: ['menu'] }),
       queryClient.invalidateQueries({ queryKey: ['products', 'active'] }),
       queryClient.invalidateQueries({ queryKey: ['recipes'] }),
@@ -95,7 +95,7 @@ const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
       notes,
     }),
     onSuccess: async () => {
-      await refreshRecipes()
+      refreshRecipes()
       await navigate({ replace: true, to: '/recipes' })
     },
   })
@@ -108,7 +108,7 @@ const RecipeDetailEditor = ({ recipe }: RecipeDetailEditorProps) => {
     mutationKey: ['recipe-detail', recipeId, 'delete'],
     mutationFn: () => api.deleteRecipe(recipeId),
     onSuccess: async () => {
-      await Promise.all([
+      void Promise.all([
         queryClient.invalidateQueries({ queryKey: ['menu'] }),
         queryClient.invalidateQueries({ queryKey: ['recipes'] }),
         queryClient.invalidateQueries({ queryKey: ['shopping-list'] }),

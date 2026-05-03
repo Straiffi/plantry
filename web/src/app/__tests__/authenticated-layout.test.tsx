@@ -10,19 +10,9 @@ const apiMock = vi.hoisted(() => ({
   getProducts: vi.fn(),
 }))
 
-const authClientMock = vi.hoisted(() => ({
-  useSession: vi.fn(),
-}))
-
 vi.mock('@/lib/api', () => {
   return {
     api: apiMock,
-  }
-})
-
-vi.mock('@/lib/auth-client', () => {
-  return {
-    authClient: authClientMock,
   }
 })
 
@@ -61,18 +51,6 @@ describe('AuthenticatedLayout', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    authClientMock.useSession.mockReturnValue({
-      data: {
-        session: {
-          id: 'session-1',
-          userId: 'user-1',
-        },
-        user: {
-          id: 'user-1',
-        },
-      },
-      isPending: false,
-    })
     apiMock.getMe.mockResolvedValue({
       household: {
         createdAt: '2026-01-01T00:00:00.000Z',
@@ -104,10 +82,43 @@ describe('AuthenticatedLayout', () => {
   it('preloads active products after loading the authenticated workspace', async () => {
     renderWithProviders(<AuthenticatedLayout />)
 
+    expect(screen.getByText('loading')).toBeInTheDocument()
     expect(await screen.findByText('authenticated outlet')).toBeInTheDocument()
 
     await waitFor(() => {
+      expect(apiMock.getMe).toHaveBeenCalledTimes(1)
       expect(apiMock.getProducts).toHaveBeenCalledWith(false)
     })
+  })
+
+  it('redirects to login when /api/me returns unauthorized', async () => {
+    apiMock.getMe.mockRejectedValue({ status: 401 })
+
+    renderWithProviders(<AuthenticatedLayout />)
+
+    expect(await screen.findByText('navigate:/login')).toBeInTheDocument()
+    expect(apiMock.getProducts).not.toHaveBeenCalled()
+  })
+
+  it('shows household setup without preloading products when the user has no household', async () => {
+    apiMock.getMe.mockResolvedValue({
+      household: null,
+      householdMembership: null,
+      session: {
+        id: 'session-1',
+        userId: 'user-1',
+      },
+      user: {
+        email: 'chef@example.com',
+        id: 'user-1',
+        image: null,
+        name: 'Chef User',
+      },
+    })
+
+    renderWithProviders(<AuthenticatedLayout />)
+
+    expect(await screen.findByText('household setup')).toBeInTheDocument()
+    expect(apiMock.getProducts).not.toHaveBeenCalled()
   })
 })

@@ -120,17 +120,17 @@ export const MenuPage = () => {
     queryKey: ['menu'],
   })
 
-  const refreshMenuAndRecipes = async () => {
+  const refreshMenuAndRecipes = () => {
     setPageError(null)
-    await Promise.all([
+    void Promise.all([
       queryClient.invalidateQueries({ queryKey: ['menu'] }),
       queryClient.invalidateQueries({ queryKey: ['recipes'] }),
     ])
   }
 
-  const refreshShoppingList = async () => {
+  const refreshShoppingList = () => {
     setPageError(null)
-    await queryClient.invalidateQueries({ queryKey: ['shopping-list'] })
+    void queryClient.invalidateQueries({ queryKey: ['shopping-list'] })
   }
 
   const handleMutationError = (error: unknown) => {
@@ -165,10 +165,10 @@ export const MenuPage = () => {
   const deleteCheckedMutation = useMutation({
     mutationKey: ['menu', 'delete-checked'],
     mutationFn: api.deleteCheckedMenuItems,
-    onSuccess: async () => {
+    onSuccess: () => {
       setExpandedMenuItemId(null)
       setIsDeleteDialogOpen(false)
-      await refreshMenuAndRecipes()
+      refreshMenuAndRecipes()
     },
   })
   const addMenuItemToShoppingListMutation = useMutation({

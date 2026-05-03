@@ -236,14 +236,14 @@ export const ShoppingListPage = () => {
     queryKey: ['shopping-list'],
   })
 
-  const refreshShoppingList = async () => {
+  const refreshShoppingList = () => {
     setPageError(null)
-    await queryClient.invalidateQueries({ queryKey: ['shopping-list'] })
+    void queryClient.invalidateQueries({ queryKey: ['shopping-list'] })
   }
 
-  const refreshShoppingListAndProductSuggestions = async () => {
+  const refreshShoppingListAndProductSuggestions = () => {
     setPageError(null)
-    await Promise.all([
+    void Promise.all([
       queryClient.invalidateQueries({ queryKey: ['products', 'active'] }),
       queryClient.invalidateQueries({ queryKey: ['product-search'] }),
       queryClient.invalidateQueries({ queryKey: ['shopping-list'] }),
@@ -262,10 +262,10 @@ export const ShoppingListPage = () => {
   const addItemMutation = useMutation({
     mutationKey: ['shopping-list', 'add-item'],
     mutationFn: (input: { itemId?: string; name?: string; quantity: number }) => api.addShoppingListItem(input),
-    onSuccess: async () => {
+    onSuccess: () => {
       setDraftEntry(createDraftEntry())
       setDraftEntryVersion((currentValue) => currentValue + 1)
-      await refreshShoppingListAndProductSuggestions()
+      refreshShoppingListAndProductSuggestions()
     },
   })
   const toggleItemMutation = useMutation({
@@ -296,9 +296,9 @@ export const ShoppingListPage = () => {
   const deleteCheckedMutation = useMutation({
     mutationKey: ['shopping-list', 'delete-checked'],
     mutationFn: api.deleteCheckedShoppingListItems,
-    onSuccess: async () => {
+    onSuccess: () => {
       setIsDeleteDialogOpen(false)
-      await refreshShoppingList()
+      refreshShoppingList()
     },
   })
   const deleteItemMutation = useMutation({

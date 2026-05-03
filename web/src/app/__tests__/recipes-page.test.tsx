@@ -274,6 +274,32 @@ describe('RecipesPage', () => {
     deferredAddToMenu.resolve(recipes[0]!)
   })
 
+  it('stops blocking recipe actions after the mutation resolves even when broad refetches are still running', async () => {
+    const deferredRefetch = createDeferred<typeof recipes>()
+    const user = userEvent.setup()
+
+    apiMock.getRecipes
+      .mockResolvedValueOnce(recipes)
+      .mockImplementationOnce(() => deferredRefetch.promise)
+    apiMock.addRecipeToMenu.mockResolvedValue(recipes[0])
+
+    renderWithProviders(<RecipesPage />)
+
+    const addToMenuButtons = await screen.findAllByRole('button', { name: 'Add to menu' })
+
+    await user.click(addToMenuButtons[0]!)
+
+    await waitFor(() => {
+      expect(apiMock.addRecipeToMenu).toHaveBeenCalledWith('recipe-1')
+    })
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Add to menu' })[0]).not.toBeDisabled()
+    })
+
+    deferredRefetch.resolve(recipes)
+  })
+
   it('sorts recipes by menu date with not-yet-added recipes last', async () => {
     const user = userEvent.setup()
 

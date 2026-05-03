@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
 import { api } from '@/lib/api'
-import { authClient } from '@/lib/auth-client'
 import { AppContext } from '@/app/app-context'
 import { HouseholdSetupPage } from '@/app/household-setup-page'
 import { LoadingPage } from '@/app/loading-page'
@@ -11,26 +10,28 @@ import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
+const isUnauthorizedError = (error: unknown) => {
+  return typeof error === 'object' && error !== null && 'status' in error && error.status === 401
+}
+
 export const AuthenticatedLayout = () => {
   const { t } = useTranslation()
-  const sessionState = authClient.useSession()
   const meQuery = useQuery({
-    enabled: !!sessionState.data,
     queryFn: api.getMe,
     queryKey: ['me'],
   })
   useQuery({
-    enabled: Boolean(sessionState.data && meQuery.data?.household && meQuery.data.householdMembership),
+    enabled: Boolean(meQuery.data?.household && meQuery.data.householdMembership),
     queryFn: () => api.getProducts(false),
     queryKey: ['products', 'active'],
     staleTime: 300000,
   })
 
-  if (sessionState.isPending || (sessionState.data && meQuery.isPending)) {
+  if (meQuery.isPending) {
     return <LoadingPage />
   }
 
-  if (!sessionState.data) {
+  if (isUnauthorizedError(meQuery.error)) {
     return <Navigate to="/login" />
   }
 

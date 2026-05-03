@@ -154,8 +154,8 @@ export const ProductsPage = () => {
     queryKey: ['products', 'all'],
   })
 
-  const invalidateCatalog = async () => {
-    await Promise.all([
+  const invalidateCatalog = () => {
+    void Promise.all([
       queryClient.invalidateQueries({ queryKey: ['categories'] }),
       queryClient.invalidateQueries({ queryKey: ['products', 'active'] }),
       queryClient.invalidateQueries({ queryKey: ['products', 'all'] }),
@@ -164,8 +164,8 @@ export const ProductsPage = () => {
     ])
   }
 
-  const invalidateCategoryDependents = async () => {
-    await Promise.all([
+  const invalidateCategoryDependents = () => {
+    void Promise.all([
       queryClient.invalidateQueries({ queryKey: ['products', 'active'] }),
       queryClient.invalidateQueries({ queryKey: ['products', 'all'] }),
       queryClient.invalidateQueries({ queryKey: ['product-search'] }),
@@ -176,10 +176,10 @@ export const ProductsPage = () => {
   const createCategoryMutation = useMutation({
     mutationKey: ['products', 'create-category'],
     mutationFn: (name: string) => api.createCategory(name),
-    onSuccess: async () => {
+    onSuccess: () => {
       setCategoryName('')
       setPageError(null)
-      await invalidateCatalog()
+      invalidateCatalog()
     },
   })
   const deleteCategoryMutation = useMutation({
@@ -212,13 +212,13 @@ export const ProductsPage = () => {
 
       return { previousCategories, requestId }
     },
-    onSuccess: async (categories, _nextCategories, context) => {
+    onSuccess: (categories, _nextCategories, context) => {
       if (!context || context.requestId !== latestCategoryReorderRequestId.current) {
         return
       }
 
       queryClient.setQueryData(['categories'], categories)
-      await invalidateCategoryDependents()
+      invalidateCategoryDependents()
     },
   })
   const createProductMutation = useMutation({
@@ -227,11 +227,11 @@ export const ProductsPage = () => {
       categoryId: productCategoryId ? productCategoryId : null,
       name: productName,
     }),
-    onSuccess: async () => {
+    onSuccess: () => {
       setProductName('')
       setProductCategoryId('')
       setPageError(null)
-      await invalidateCatalog()
+      invalidateCatalog()
     },
   })
   const archiveProductMutation = useMutation({

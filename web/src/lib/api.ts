@@ -161,14 +161,68 @@ class ApiError extends Error {
   }
 }
 
+const getApiTimingPreference = () => {
+  if (import.meta.env.VITE_PLANTRY_LOG_API_TIMINGS === 'true') {
+    return true
+  }
+
+  if (import.meta.env.DEV && import.meta.env.MODE !== 'test') {
+    return true
+  }
+
+  try {
+    return window.localStorage.getItem('plantry:log-api-timings') === 'true'
+  } catch {
+    return false
+  }
+}
+
+const logApiTiming = (input: { durationMs: number; method: string; path: string; serverTiming: string | null; status: number | 'network-error' }) => {
+  if (!getApiTimingPreference()) {
+    return
+  }
+
+  console.info('[api]', {
+    durationMs: Number(input.durationMs.toFixed(1)),
+    method: input.method,
+    path: input.path,
+    serverTiming: input.serverTiming,
+    status: input.status,
+  })
+}
+
 const request = async <T>(path: string, init?: RequestInit) => {
-  const response = await fetch(`/api${path}`, {
-    credentials: 'include',
-    headers: {
-      'content-type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    ...init,
+  const method = init?.method ?? 'GET'
+  const startedAt = performance.now()
+  let response: Response
+
+  try {
+    response = await fetch(`/api${path}`, {
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/json',
+        ...(init?.headers ?? {}),
+      },
+      ...init,
+    })
+  } catch (error) {
+    logApiTiming({
+      durationMs: performance.now() - startedAt,
+      method,
+      path,
+      serverTiming: null,
+      status: 'network-error',
+    })
+
+    throw error
+  }
+
+  logApiTiming({
+    durationMs: performance.now() - startedAt,
+    method,
+    path,
+    serverTiming: response.headers.get('server-timing'),
+    status: response.status,
   })
 
   if (!response.ok) {

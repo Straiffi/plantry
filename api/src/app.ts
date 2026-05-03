@@ -12,8 +12,11 @@ import { menuRoute } from './routes/menu.js'
 import { meRoute } from './routes/me.js'
 import { recipesRoute } from './routes/recipes.js'
 import { shoppingListRoute } from './routes/shopping-list.js'
+import { requestTimingMiddleware } from './middleware/request-timing.js'
 
 export const app = new Hono<AppEnv>().basePath('/api')
+
+app.use('*', requestTimingMiddleware)
 
 app.get('/health', (context) => {
   return context.json({

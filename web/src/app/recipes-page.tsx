@@ -171,9 +171,9 @@ export const RecipesPage = () => {
     queryKey: ['recipes'],
   })
 
-  const refreshRecipes = async () => {
+  const refreshRecipes = () => {
     setPageError(null)
-    await Promise.all([
+    void Promise.all([
       queryClient.invalidateQueries({ queryKey: ['menu'] }),
       queryClient.invalidateQueries({ queryKey: ['products', 'active'] }),
       queryClient.invalidateQueries({ queryKey: ['recipes'] }),
@@ -203,13 +203,13 @@ export const RecipesPage = () => {
       name,
       notes,
     }),
-    onSuccess: async () => {
+    onSuccess: () => {
       setAutoFocusItemId(null)
       setName('')
       setNotes('')
       setItems([createDraftItem()])
       setIsCreateFormOpen(false)
-      await refreshRecipes()
+      refreshRecipes()
     },
   })
   const addRecipeToMenuMutation = useMutation({
@@ -225,9 +225,9 @@ export const RecipesPage = () => {
   const deleteRecipeMutation = useMutation({
     mutationKey: ['recipes', 'delete-recipe'],
     mutationFn: (recipeId: string) => api.deleteRecipe(recipeId),
-    onSuccess: async () => {
+    onSuccess: () => {
       setExpandedRecipeId(null)
-      await refreshRecipes()
+      refreshRecipes()
     },
   })
 

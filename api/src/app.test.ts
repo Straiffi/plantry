@@ -212,6 +212,8 @@ describe('app', () => {
     const response = await app.request('http://localhost/api/health')
 
     expect(response.status).toBe(200)
+    expect(response.headers.get('server-timing')).toMatch(/^app;dur=\d+(\.\d)?$/)
+    expect(response.headers.get('x-response-time')).toMatch(/^\d+(\.\d)?ms$/)
     expect(getSessionSpy).not.toHaveBeenCalled()
     await expect(response.json()).resolves.toEqual({
       service: 'api',
