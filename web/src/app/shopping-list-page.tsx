@@ -420,7 +420,7 @@ export const ShoppingListPage = () => {
 
         {shoppingList.items.length > 0 && (
           <Card className="border-border/60 bg-card/90">
-            <CardContent className="space-y-4 p-3 sm:space-y-6 sm:p-6">
+            <CardContent className="space-y-3 p-3 sm:space-y-6 sm:p-6">
               {shoppingList.items.map((item, index) => {
                 const previousItem = shoppingList.items[index - 1]
                 const pendingUpdate = pendingUpdatedItems.find((pendingItem) => pendingItem.shoppingListItemId === item.id)
@@ -431,7 +431,7 @@ export const ShoppingListPage = () => {
                 const shouldShowCategoryHeading = index === 0 || currentCategoryId !== previousCategoryId
 
                 return (
-                  <section className="space-y-2 sm:space-y-3" key={item.id}>
+                  <section className="space-y-1.5 sm:space-y-3" key={item.id}>
                     {shouldShowCategoryHeading && (
                       <div className="px-1">
                         <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground sm:text-sm">
@@ -440,7 +440,7 @@ export const ShoppingListPage = () => {
                       </div>
                     )}
 
-                    <div className="space-y-2 sm:space-y-3">
+                    <div className="space-y-1.5 sm:space-y-3">
                       <ShoppingListRow
                         isDecrementPending={Boolean(isDecrementPending)}
                         isDeletePending={pendingDeletedItemIds.includes(item.id)}
