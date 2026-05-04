@@ -139,7 +139,7 @@ const matchesRecipeSearch = (recipe: Recipe, query: string) => {
 const RecipeSummaryCard = ({ isAddToMenuPending, isAddToShoppingListPending, isDeletePending, isExpanded, onAddToMenu, onAddToShoppingList, onDelete, onToggle, recipe }: RecipeSummaryCardProps) => {
   const { t } = useTranslation()
   const lastAddedLabel = getRecipeSortLabel(recipe, t)
-  const previewText = recipe.notes ?? t('recipes.noNotes')
+  const previewText = recipe.notes ?? ''
   const recipeDetailsId = `recipe-details-${recipe.id}`
 
   return (

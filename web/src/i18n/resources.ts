@@ -111,7 +111,6 @@ export const resources = {
         lastAddedToMenu: 'Last added to menu {{value}}',
         lastAddedToMenuNever: 'Not added to menu yet',
         namePlaceholder: 'Recipe name',
-        noNotes: 'No notes yet',
         notesPlaceholder: 'Add cooking notes, timing reminders, or serving details',
         openRecipe: 'Open recipe',
         searchLabel: 'Search recipes',

@@ -254,6 +254,15 @@ describe('RecipesPage', () => {
     expect(screen.getByRole('button', { expanded: true, name: /Pasta/ })).toBeInTheDocument()
   })
 
+  it('leaves the summary notes area empty when a recipe has no notes', async () => {
+    apiMock.getRecipes.mockResolvedValue(recipes)
+
+    renderWithProviders(<RecipesPage />)
+
+    expect(await screen.findByText('Salad')).toBeInTheDocument()
+    expect(screen.queryByText('No notes yet')).not.toBeInTheDocument()
+  })
+
   it('keeps the summary card collapsed when Add to menu is pressed', async () => {
     const user = userEvent.setup()
 
