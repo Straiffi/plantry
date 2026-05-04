@@ -261,7 +261,11 @@ describe('RecipesPage', () => {
 
     renderWithProviders(<RecipesPage />)
 
-    await user.click((await screen.findAllByRole('button', { name: 'Add to menu' }))[0]!)
+    const addToMenuButton = (await screen.findAllByRole('button', { name: 'Add to menu' }))[0]!
+
+    expect(addToMenuButton).toHaveClass('order-4', 'ml-auto', 'sm:order-2', 'sm:ml-0')
+
+    await user.click(addToMenuButton)
 
     await waitFor(() => {
       expect(apiMock.addRecipeToMenu).toHaveBeenCalledWith('recipe-1')

@@ -147,37 +147,38 @@ const RecipeSummaryCard = ({ isAddToMenuPending, isAddToShoppingListPending, isD
       <div
         aria-controls={recipeDetailsId}
         aria-expanded={isExpanded}
-        className="grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 rounded-3xl px-5 py-4 text-left outline-none transition-colors hover:bg-accent/30 focus-visible:ring-2 focus-visible:ring-ring/30 sm:px-6"
+        className="flex w-full flex-wrap items-start gap-x-3 gap-y-2 rounded-3xl px-5 py-4 text-left outline-none transition-colors hover:bg-accent/30 focus-visible:ring-2 focus-visible:ring-ring/30 sm:px-6"
         onClick={(event) => handleRecipeSummaryClick(event, () => onToggle(recipe.id))}
         onKeyDown={(event) => handleRecipeSummaryKeyDown(event, () => onToggle(recipe.id))}
         role="button"
         tabIndex={0}
       >
-        <p className="min-w-0 truncate text-lg font-semibold text-foreground">{recipe.name}</p>
+        <p className="min-w-0 flex-1 basis-0 truncate text-lg font-semibold text-foreground">{recipe.name}</p>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <Button
-            loading={isAddToMenuPending}
-            onClick={(event) => {
-              event.stopPropagation()
-              onAddToMenu(recipe.id)
-            }}
-            size="xs"
-            type="button"
-            variant="secondary"
-          >
-            <span>{t('recipes.addToMenu')}</span>
-          </Button>
-
+        <div className="order-2 flex shrink-0 items-center gap-2 sm:order-3 sm:gap-3">
           <Badge variant="outline">{t('recipes.itemCount', { count: recipe.items.length })}</Badge>
           <ChevronDown className={`size-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
         </div>
 
-        <div className="col-span-2 min-w-0 space-y-2">
+        <div className="order-3 basis-full min-w-0 space-y-2 sm:order-4">
           <RecipeNotes isExpanded={isExpanded} value={previewText} />
           <p className="text-xs text-muted-foreground">{lastAddedLabel}</p>
         </div>
-        </div>
+
+        <Button
+          className="order-4 ml-auto sm:order-2 sm:ml-0"
+          loading={isAddToMenuPending}
+          onClick={(event) => {
+            event.stopPropagation()
+            onAddToMenu(recipe.id)
+          }}
+          size="xs"
+          type="button"
+          variant="secondary"
+        >
+          <span>{t('recipes.addToMenu')}</span>
+        </Button>
+      </div>
 
       {isExpanded && (
         <CardContent className="space-y-4 border-t border-border/60 p-5 sm:p-6" id={recipeDetailsId}>
