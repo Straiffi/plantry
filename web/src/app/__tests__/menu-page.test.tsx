@@ -60,7 +60,7 @@ const menuItem: MenuItem = {
     }],
     lastAddedToMenuAt: '2026-01-03T12:00:00.000Z',
     name: 'Pasta',
-    notes: 'Fresh sauce',
+    notes: 'Fresh sauce\nhttps://example.com/recipe',
     updatedAt: '2026-01-01T00:00:00.000Z',
   },
   recipeId: 'recipe-1',
@@ -193,6 +193,26 @@ describe('MenuPage', () => {
     await user.click(screen.getByRole('button', { name: 'Add recipe to shopping list' }))
 
     expect(apiMock.addMenuItemToShoppingList).toHaveBeenCalledWith('menu-item-1')
+  })
+
+  it('renders expanded recipe notes with preserved whitespace and clickable links', async () => {
+    const user = userEvent.setup()
+
+    apiMock.getMenu.mockResolvedValue({ items: [menuItem] })
+
+    renderWithProviders(<MenuPage />)
+
+    await user.click(await screen.findByText('Pasta'))
+
+    const notes = screen.getByText(/Fresh sauce/).closest('p')
+    const recipeLink = screen.getByRole('link', { name: 'https://example.com/recipe' })
+
+    recipeLink.addEventListener('click', (event) => event.preventDefault())
+
+    expect(notes).toHaveClass('whitespace-pre-line')
+    expect(recipeLink).toHaveAttribute('href', 'https://example.com/recipe')
+    expect(recipeLink).toHaveAttribute('target', '_blank')
+    expect(recipeLink).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
   it('adds unchecked menu recipes to the shopping list from the header action', async () => {

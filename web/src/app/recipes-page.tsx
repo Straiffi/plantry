@@ -5,6 +5,7 @@ import { ChevronDown, Plus, Send, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { api, ApiError, type Recipe } from '@/lib/api'
+import { RecipeNotes } from '@/components/recipe-notes'
 import { RecipesPageSkeleton } from '@/components/page-skeleton'
 import { PageHeader } from '@/components/page-header'
 import { RecipeItemEditor, type RecipeDraftItem } from '@/components/recipe-item-editor'
@@ -49,44 +50,6 @@ const getRecipeSortLabel = (recipe: Recipe, t: ReturnType<typeof useTranslation>
   }
 
   return t('recipes.lastAddedToMenu', { value: formatMenuDate(recipe.lastAddedToMenuAt) })
-}
-
-const recipeNoteUrlPattern = /(https?:\/\/[^\s]+)/g
-
-type RecipeNotesProps = {
-  isExpanded: boolean
-  value: string
-}
-
-const RecipeNotes = ({ isExpanded, value }: RecipeNotesProps) => {
-  const parts = value.split(recipeNoteUrlPattern)
-
-  return (
-    <p className={`whitespace-pre-line break-words text-sm text-muted-foreground ${isExpanded ? '' : 'line-clamp-2'}`}>
-      {parts.map((part, index) => {
-        if (!part) {
-          return null
-        }
-
-        if (/^https?:\/\/\S+$/.test(part)) {
-          return (
-            <a
-              className="text-primary underline underline-offset-2 transition-colors hover:text-primary/80"
-              href={part}
-              key={`${part}-${index}`}
-              onClick={(event) => event.stopPropagation()}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              {part}
-            </a>
-          )
-        }
-
-        return <span key={`${part}-${index}`}>{part}</span>
-      })}
-    </p>
-  )
 }
 
 const isRecipeSummaryInteractiveTarget = (target: EventTarget | null) => {

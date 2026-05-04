@@ -4,6 +4,7 @@ import { CheckCircle2, ChevronDown, Circle, Send } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { api, ApiError, type MenuItem } from '@/lib/api'
+import { RecipeNotes } from '@/components/recipe-notes'
 import { MenuPageSkeleton } from '@/components/page-skeleton'
 import { PageHeader } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
@@ -86,7 +87,7 @@ const MenuRow = ({ isAddToShoppingListPending, isExpanded, item, isTogglePending
 
       {isExpanded && (
         <div className="space-y-4 border-t border-border/60 px-3 py-3 sm:px-4">
-          {item.recipe.notes && <p className="text-sm text-muted-foreground">{item.recipe.notes}</p>}
+          {item.recipe.notes && <RecipeNotes isExpanded value={item.recipe.notes} />}
 
           <div className="space-y-2">
             {item.recipe.items.map((recipeItem) => (
