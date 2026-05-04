@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, Plus, Send, Trash2 } from 'lucide-react'
@@ -49,6 +49,67 @@ const getRecipeSortLabel = (recipe: Recipe, t: ReturnType<typeof useTranslation>
   }
 
   return t('recipes.lastAddedToMenu', { value: formatMenuDate(recipe.lastAddedToMenuAt) })
+}
+
+const recipeNoteUrlPattern = /(https?:\/\/[^\s]+)/g
+
+type RecipeNotesProps = {
+  isExpanded: boolean
+  value: string
+}
+
+const RecipeNotes = ({ isExpanded, value }: RecipeNotesProps) => {
+  const parts = value.split(recipeNoteUrlPattern)
+
+  return (
+    <p className={`whitespace-pre-line break-words text-sm text-muted-foreground ${isExpanded ? '' : 'line-clamp-2'}`}>
+      {parts.map((part, index) => {
+        if (!part) {
+          return null
+        }
+
+        if (/^https?:\/\/\S+$/.test(part)) {
+          return (
+            <a
+              className="text-primary underline underline-offset-2 transition-colors hover:text-primary/80"
+              href={part}
+              key={`${part}-${index}`}
+              onClick={(event) => event.stopPropagation()}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {part}
+            </a>
+          )
+        }
+
+        return <span key={`${part}-${index}`}>{part}</span>
+      })}
+    </p>
+  )
+}
+
+const isRecipeSummaryInteractiveTarget = (target: EventTarget | null) => {
+  return target instanceof Element && target.closest('a,button') !== null
+}
+
+const handleRecipeSummaryClick = (event: MouseEvent<HTMLDivElement>, onToggle: () => void) => {
+  if (isRecipeSummaryInteractiveTarget(event.target)) {
+    return
+  }
+
+  onToggle()
+}
+
+const handleRecipeSummaryKeyDown = (event: KeyboardEvent<HTMLDivElement>, onToggle: () => void) => {
+  if (isRecipeSummaryInteractiveTarget(event.target)) {
+    return
+  }
+
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    onToggle()
+  }
 }
 
 const compareNullableDates = (left: string | null, right: string | null, direction: 'asc' | 'desc') => {
@@ -116,36 +177,47 @@ const RecipeSummaryCard = ({ isAddToMenuPending, isAddToShoppingListPending, isD
   const { t } = useTranslation()
   const lastAddedLabel = getRecipeSortLabel(recipe, t)
   const previewText = recipe.notes ?? t('recipes.noNotes')
+  const recipeDetailsId = `recipe-details-${recipe.id}`
 
   return (
     <Card className="border-border/60 bg-card/90 shadow-[0_16px_48px_rgba(62,44,32,0.06)]">
-      <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-start sm:gap-4 sm:px-6">
-        <button
-          aria-expanded={isExpanded}
-          className="min-w-0 flex-1 rounded-3xl text-left outline-none transition-colors hover:bg-accent/30 focus-visible:ring-2 focus-visible:ring-ring/30"
-          onClick={() => onToggle(recipe.id)}
-          type="button"
-        >
-          <div className="min-w-0 space-y-2">
-            <p className="truncate text-lg font-semibold text-foreground">{recipe.name}</p>
-            <p className="hidden line-clamp-1 text-sm text-muted-foreground sm:block">{previewText}</p>
-            <p className="text-xs text-muted-foreground">{lastAddedLabel}</p>
-          </div>
-        </button>
+      <div
+        aria-controls={recipeDetailsId}
+        aria-expanded={isExpanded}
+        className="grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 rounded-3xl px-5 py-4 text-left outline-none transition-colors hover:bg-accent/30 focus-visible:ring-2 focus-visible:ring-ring/30 sm:px-6"
+        onClick={(event) => handleRecipeSummaryClick(event, () => onToggle(recipe.id))}
+        onKeyDown={(event) => handleRecipeSummaryKeyDown(event, () => onToggle(recipe.id))}
+        role="button"
+        tabIndex={0}
+      >
+        <p className="min-w-0 truncate text-lg font-semibold text-foreground">{recipe.name}</p>
 
-        <div className="flex items-center justify-between gap-2 sm:shrink-0 sm:justify-start sm:gap-3">
-          <div className="flex items-center gap-2 sm:order-2 sm:gap-3">
-            <Badge variant="outline">{t('recipes.itemCount', { count: recipe.items.length })}</Badge>
-            <ChevronDown className={`size-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-          </div>
-          <Button loading={isAddToMenuPending} onClick={() => onAddToMenu(recipe.id)} size="xs" type="button" variant="secondary">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <Button
+            loading={isAddToMenuPending}
+            onClick={(event) => {
+              event.stopPropagation()
+              onAddToMenu(recipe.id)
+            }}
+            size="xs"
+            type="button"
+            variant="secondary"
+          >
             <span>{t('recipes.addToMenu')}</span>
           </Button>
+
+          <Badge variant="outline">{t('recipes.itemCount', { count: recipe.items.length })}</Badge>
+          <ChevronDown className={`size-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
         </div>
-      </div>
+
+        <div className="col-span-2 min-w-0 space-y-2">
+          <RecipeNotes isExpanded={isExpanded} value={previewText} />
+          <p className="text-xs text-muted-foreground">{lastAddedLabel}</p>
+        </div>
+        </div>
 
       {isExpanded && (
-        <CardContent className="space-y-4 border-t border-border/60 p-5 sm:p-6">
+        <CardContent className="space-y-4 border-t border-border/60 p-5 sm:p-6" id={recipeDetailsId}>
           <div className="flex flex-wrap gap-2">
             {recipe.items.map((item) => (
               <Badge key={item.id} variant="muted">

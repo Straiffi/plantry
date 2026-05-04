@@ -64,7 +64,7 @@ const recipes = [
     }],
     lastAddedToMenuAt: '2026-01-03T12:00:00.000Z',
     name: 'Pasta',
-    notes: 'Fresh sauce',
+    notes: 'Fresh sauce\nhttps://example.com/recipe',
     updatedAt: '2026-01-01T00:00:00.000Z',
   },
   {
@@ -214,7 +214,84 @@ describe('RecipesPage', () => {
     })
   })
 
-  it('shows the quick Add to menu action on compact recipe cards', async () => {
+  it('toggles recipe cards from the summary area and expands notes in place', async () => {
+    const user = userEvent.setup()
+
+    apiMock.getRecipes.mockResolvedValue(recipes)
+
+    renderWithProviders(<RecipesPage />)
+
+    const collapsedNotes = () => screen.getByText(/Fresh sauce/).closest('p')
+
+    expect(await screen.findByText('Pasta')).toBeInTheDocument()
+    expect(collapsedNotes()).toHaveClass('line-clamp-2')
+    expect(screen.getAllByRole('button', { name: 'Add to menu' })).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: 'Add to shopping list' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { expanded: false, name: /Pasta/ }))
+
+    expect(screen.getByRole('button', { expanded: true, name: /Pasta/ })).toBeInTheDocument()
+    expect(collapsedNotes()).not.toHaveClass('line-clamp-2')
+    expect(screen.getByRole('button', { name: 'Add to shopping list' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Add to menu' })).toHaveLength(2)
+
+    await user.click(screen.getByRole('button', { expanded: true, name: /Pasta/ }))
+
+    expect(screen.getByRole('button', { expanded: false, name: /Pasta/ })).toBeInTheDocument()
+    expect(collapsedNotes()).toHaveClass('line-clamp-2')
+    expect(screen.queryByRole('button', { name: 'Add to shopping list' })).not.toBeInTheDocument()
+  })
+
+  it('toggles when note text inside the padded summary area is clicked', async () => {
+    const user = userEvent.setup()
+
+    apiMock.getRecipes.mockResolvedValue(recipes)
+
+    renderWithProviders(<RecipesPage />)
+
+    await user.click(await screen.findByText('Fresh sauce'))
+
+    expect(screen.getByRole('button', { expanded: true, name: /Pasta/ })).toBeInTheDocument()
+  })
+
+  it('keeps the summary card collapsed when Add to menu is pressed', async () => {
+    const user = userEvent.setup()
+
+    apiMock.getRecipes.mockResolvedValue(recipes)
+
+    renderWithProviders(<RecipesPage />)
+
+    await user.click((await screen.findAllByRole('button', { name: 'Add to menu' }))[0]!)
+
+    await waitFor(() => {
+      expect(apiMock.addRecipeToMenu).toHaveBeenCalledWith('recipe-1')
+    })
+
+    expect(screen.getByRole('button', { expanded: false, name: /Pasta/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add to shopping list' })).not.toBeInTheDocument()
+  })
+
+  it('supports keyboard toggling from the summary container', async () => {
+    const user = userEvent.setup()
+
+    apiMock.getRecipes.mockResolvedValue(recipes)
+
+    renderWithProviders(<RecipesPage />)
+
+    const summaryToggle = await screen.findByRole('button', { expanded: false, name: /Pasta/ })
+
+    summaryToggle.focus()
+    await user.keyboard('{Enter}')
+
+    expect(screen.getByRole('button', { expanded: true, name: /Pasta/ })).toBeInTheDocument()
+
+    screen.getByRole('button', { expanded: true, name: /Pasta/ }).focus()
+    await user.keyboard(' ')
+
+    expect(screen.getByRole('button', { expanded: false, name: /Pasta/ })).toBeInTheDocument()
+  })
+
+  it('renders note urls as separate links that open in a new tab without toggling the card', async () => {
     const user = userEvent.setup()
 
     apiMock.getRecipes.mockResolvedValue(recipes)
@@ -222,17 +299,18 @@ describe('RecipesPage', () => {
     renderWithProviders(<RecipesPage />)
 
     expect(await screen.findByText('Pasta')).toBeInTheDocument()
-    expect(screen.getByText('Fresh sauce')).toHaveClass('hidden', 'sm:block')
-    expect(screen.getAllByRole('button', { name: 'Add to menu' })).toHaveLength(2)
-    expect(screen.queryByRole('button', { name: 'Add to shopping list' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByText('Pasta'))
+    const recipeLink = screen.getByRole('link', { name: 'https://example.com/recipe' })
 
-    expect(screen.getByRole('button', { name: 'Add to shopping list' })).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Add to menu' })).toHaveLength(2)
+    recipeLink.addEventListener('click', (event) => event.preventDefault())
 
-    await user.click(screen.getByText('Pasta'))
+    expect(recipeLink).toHaveAttribute('href', 'https://example.com/recipe')
+    expect(recipeLink).toHaveAttribute('target', '_blank')
+    expect(recipeLink).toHaveAttribute('rel', 'noopener noreferrer')
 
+    await user.click(recipeLink)
+
+    expect(screen.getByRole('button', { expanded: false, name: /Pasta/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Add to shopping list' })).not.toBeInTheDocument()
   })
 
