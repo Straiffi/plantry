@@ -10,11 +10,14 @@ import { ProductPickerField, type ProductSelection } from '@/components/product-
 import { QuantityStepper } from '@/components/quantity-stepper'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 
 type ShoppingListQueryData = Awaited<ReturnType<typeof api.getShoppingList>>
 
 type ToggleShoppingListItemMutationContext = {
+  previousShoppingList?: ShoppingListQueryData
+}
+
+type DeleteCheckedShoppingListMutationContext = {
   previousShoppingList?: ShoppingListQueryData
 }
 
@@ -137,6 +140,16 @@ const mergeShoppingListItemInCache = (shoppingList: ShoppingListQueryData | unde
   return updateShoppingListCache(shoppingList, nextItems)
 }
 
+const removeCheckedShoppingListItemsFromCache = (shoppingList: ShoppingListQueryData | undefined) => {
+  if (!shoppingList) {
+    return shoppingList
+  }
+
+  const nextItems = shoppingList.items.filter((item) => !item.checked)
+
+  return updateShoppingListCache(shoppingList, nextItems)
+}
+
 const createDraftEntry = (): DraftEntry => {
   return {
     name: '',
@@ -226,7 +239,6 @@ const ShoppingListDraftRow = ({ disabled, draftEntry, onClose, onQuantityChange,
 
 export const ShoppingListPage = () => {
   const { t } = useTranslation()
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [draftEntryVersion, setDraftEntryVersion] = useState(0)
   const queryClient = useQueryClient()
   const [draftEntry, setDraftEntry] = useState<DraftEntry | null>(null)
@@ -296,8 +308,21 @@ export const ShoppingListPage = () => {
   const deleteCheckedMutation = useMutation({
     mutationKey: ['shopping-list', 'delete-checked'],
     mutationFn: api.deleteCheckedShoppingListItems,
+    onError: (error, _variables, context: DeleteCheckedShoppingListMutationContext | undefined) => {
+      queryClient.setQueryData(['shopping-list'], context?.previousShoppingList)
+      handleMutationError(error)
+    },
+    onMutate: async () => {
+      setPageError(null)
+      await queryClient.cancelQueries({ queryKey: ['shopping-list'] })
+
+      const previousShoppingList = queryClient.getQueryData<ShoppingListQueryData>(['shopping-list'])
+
+      queryClient.setQueryData<ShoppingListQueryData>(['shopping-list'], (currentShoppingList) => removeCheckedShoppingListItemsFromCache(currentShoppingList))
+
+      return { previousShoppingList } satisfies DeleteCheckedShoppingListMutationContext
+    },
     onSuccess: () => {
-      setIsDeleteDialogOpen(false)
       refreshShoppingList()
     },
   })
@@ -374,27 +399,9 @@ export const ShoppingListPage = () => {
     <div className="space-y-8">
       <PageHeader
         actions={
-          <Dialog onOpenChange={setIsDeleteDialogOpen} open={isDeleteDialogOpen}>
-            <DialogTrigger asChild>
-              <Button disabled={checkedCount === 0 || deleteCheckedMutation.isPending} variant="outline">
-                {t('shoppingList.deleteChecked')}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t('shoppingList.deleteCheckedTitle')}</DialogTitle>
-                <DialogDescription>{t('shoppingList.deleteCheckedDescription')}</DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button loading={deleteCheckedMutation.isPending} onClick={() => deleteCheckedMutation.mutate(undefined, { onError: handleMutationError })} type="button" variant="destructive">
-                  {t('shoppingList.deleteCheckedConfirm')}
-                </Button>
-                <DialogClose asChild>
-                  <Button disabled={deleteCheckedMutation.isPending} type="button" variant="outline">{t('shoppingList.cancel')}</Button>
-                </DialogClose>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button disabled={checkedCount === 0 || deleteCheckedMutation.isPending} loading={deleteCheckedMutation.isPending} onClick={() => deleteCheckedMutation.mutate()} type="button" variant="outline">
+            {t('shoppingList.deleteChecked')}
+          </Button>
         }
         title={t('shoppingList.title')}
         titleClassName="text-2xl sm:text-4xl"

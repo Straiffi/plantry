@@ -162,11 +162,7 @@ export const resources = {
       },
       shoppingList: {
         addItem: 'Add item',
-        cancel: 'Cancel',
-        deleteCheckedConfirm: 'Delete checked rows',
-        deleteCheckedDescription: 'Checked rows stay visible until you clear them. This only removes the checked shopping list rows, not the products in your catalog.',
         deleteChecked: 'Delete checked',
-        deleteCheckedTitle: 'Clear checked groceries?',
         description: 'Add groceries fast, regroup them by category, and keep checked rows visible until the trip is really done.',
         empty: 'The shopping list is empty. Add a product or send a recipe here to get started.',
         genericError: 'We could not update the shopping list just now.',

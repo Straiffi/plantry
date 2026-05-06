@@ -50,6 +50,12 @@ const shoppingListItem: ShoppingListItem = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 }
 
+const checkedShoppingListItem: ShoppingListItem = {
+  ...shoppingListItem,
+  checked: true,
+  checkedAt: '2026-01-04T00:00:00.000Z',
+}
+
 const createDeferred = <T,>() => {
   let reject!: (reason?: unknown) => void
   let resolve!: (value: T | PromiseLike<T>) => void
@@ -319,6 +325,79 @@ describe('ShoppingListPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Tomato')).not.toHaveClass('line-through')
+    })
+  })
+
+  it('deletes checked shopping list rows immediately from the header action', async () => {
+    const deferredDelete = createDeferred<{ deletedCount: number }>()
+    const user = userEvent.setup()
+
+    apiMock.deleteCheckedShoppingListItems.mockImplementationOnce(() => deferredDelete.promise)
+    apiMock.getShoppingList.mockResolvedValue({
+      groups: [{ category: null, items: [checkedShoppingListItem, { ...shoppingListItem, id: 'shopping-list-item-2', item: { ...shoppingListItem.item, id: 'item-2', name: 'Paprika' }, itemId: 'item-2' }] }],
+      items: [checkedShoppingListItem, { ...shoppingListItem, id: 'shopping-list-item-2', item: { ...shoppingListItem.item, id: 'item-2', name: 'Paprika' }, itemId: 'item-2' }],
+    })
+
+    renderWithProviders(<ShoppingListPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Delete checked' }))
+
+    expect(apiMock.deleteCheckedShoppingListItems).toHaveBeenCalled()
+    expect(screen.queryByText('Tomato')).not.toBeInTheDocument()
+    expect(screen.getByText('Paprika')).toBeInTheDocument()
+
+    deferredDelete.resolve({ deletedCount: 1 })
+  })
+
+  it('keeps the delete button busy while deletion is pending', async () => {
+    const deferredDelete = createDeferred<{ deletedCount: number }>()
+    const user = userEvent.setup()
+
+    apiMock.deleteCheckedShoppingListItems.mockImplementationOnce(() => deferredDelete.promise)
+    apiMock.getShoppingList.mockResolvedValue({
+      groups: [{ category: null, items: [checkedShoppingListItem] }],
+      items: [checkedShoppingListItem],
+    })
+
+    renderWithProviders(<ShoppingListPage />)
+
+    const deleteButton = await screen.findByRole('button', { name: 'Delete checked' })
+
+    await user.click(deleteButton)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Delete checked' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Delete checked' })).toHaveAttribute('aria-busy', 'true')
+    })
+
+    deferredDelete.resolve({ deletedCount: 1 })
+
+    await waitFor(() => {
+      expect(screen.getByText('The shopping list is empty. Add a product or send a recipe here to get started.')).toBeInTheDocument()
+    })
+  })
+
+  it('rolls checked shopping list rows back when deletion fails', async () => {
+    const deferredDelete = createDeferred<{ deletedCount: number }>()
+    const user = userEvent.setup()
+
+    apiMock.deleteCheckedShoppingListItems.mockImplementationOnce(() => deferredDelete.promise)
+    apiMock.getShoppingList.mockResolvedValue({
+      groups: [{ category: null, items: [checkedShoppingListItem] }],
+      items: [checkedShoppingListItem],
+    })
+
+    renderWithProviders(<ShoppingListPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Delete checked' }))
+
+    expect(screen.queryByText('Tomato')).not.toBeInTheDocument()
+
+    deferredDelete.reject(new Error('Request failed'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Tomato')).toBeInTheDocument()
+      expect(screen.getByText('We could not update the shopping list just now.')).toBeInTheDocument()
     })
   })
 
