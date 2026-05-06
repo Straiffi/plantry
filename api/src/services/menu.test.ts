@@ -69,6 +69,7 @@ const createRecipe = (overrides: Partial<{
   createdByUserId: string
   householdId: string
   id: string
+  lastAddedToMenuAt: Date | null
   name: string
   notes: string | null
   recipeItems: ReturnType<typeof createRecipeItem>[]
@@ -79,6 +80,7 @@ const createRecipe = (overrides: Partial<{
     createdByUserId: 'user-1',
     householdId: 'household-1',
     id: 'recipe-1',
+    lastAddedToMenuAt: null,
     name: 'Pasta',
     notes: null,
     recipeItems: [createRecipeItem()],
@@ -98,7 +100,11 @@ const createMenuItem = (overrides: Partial<{
   recipeId: string
   updatedAt: Date
 }> = {}) => {
-  const recipe = createRecipe(overrides.recipe ?? {})
+  const lastAddedAt = overrides.lastAddedAt ?? new Date('2026-01-02T00:00:00.000Z')
+  const recipe = createRecipe({
+    lastAddedToMenuAt: lastAddedAt,
+    ...(overrides.recipe ?? {}),
+  })
 
   return {
     checked: false,
@@ -106,7 +112,7 @@ const createMenuItem = (overrides: Partial<{
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     householdId: 'household-1',
     id: 'menu-item-1',
-    lastAddedAt: new Date('2026-01-02T00:00:00.000Z'),
+    lastAddedAt,
     recipe,
     recipeId: recipe.id,
     updatedAt: new Date('2026-01-02T00:00:00.000Z'),
@@ -115,15 +121,21 @@ const createMenuItem = (overrides: Partial<{
 }
 
 const createRepositoryMock = () => {
-  return {
+  const repository = {
     deleteCheckedItems: vi.fn(),
     findMenuItemById: vi.fn(),
     findMenuItemByRecipeId: vi.fn(),
     findRecipeById: vi.fn(),
     insertMenuItem: vi.fn(),
     listMenuItems: vi.fn(),
+    transaction: vi.fn(),
     updateMenuItem: vi.fn(),
+    updateRecipeLastAddedToMenuAt: vi.fn(),
   }
+
+  repository.transaction.mockImplementation(async (callback) => callback(repository))
+
+  return repository
 }
 
 describe('menuService', () => {
@@ -181,6 +193,11 @@ describe('menuService', () => {
         id: 'recipe-1',
       },
     })
+
+    expect(repository.updateRecipeLastAddedToMenuAt).toHaveBeenCalledWith(expect.objectContaining({
+      householdId: 'household-1',
+      recipeId: 'recipe-1',
+    }))
   })
 
   it('re-adding a recipe clears checked state and refreshes menu position metadata', async () => {
@@ -214,6 +231,10 @@ describe('menuService', () => {
       checkedAt: null,
       householdId: 'household-1',
       menuItemId: 'menu-item-1',
+    }))
+    expect(repository.updateRecipeLastAddedToMenuAt).toHaveBeenCalledWith(expect.objectContaining({
+      householdId: 'household-1',
+      recipeId: 'recipe-1',
     }))
   })
 

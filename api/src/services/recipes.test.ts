@@ -44,16 +44,7 @@ const createRecipe = (overrides: Partial<{
   createdByUserId: string
   householdId: string
   id: string
-  menuItems: Array<{
-    checked: boolean
-    checkedAt: Date | null
-    createdAt: Date
-    householdId: string
-    id: string
-    lastAddedAt: Date
-    recipeId: string
-    updatedAt: Date
-  }>
+  lastAddedToMenuAt: Date | null
   name: string
   notes: string | null
   recipeItems: Array<{
@@ -73,7 +64,7 @@ const createRecipe = (overrides: Partial<{
     createdByUserId: 'user-1',
     householdId: 'household-1',
     id: 'recipe-1',
-    menuItems: [],
+    lastAddedToMenuAt: null,
     name: 'Pasta',
     notes: null,
     recipeItems: [],
@@ -323,6 +314,29 @@ describe('recipeService', () => {
       recipeId: 'recipe-1',
       sortOrder: 0,
     })
+  })
+
+  it('lists recipes with persisted menu history even when no active menu rows remain', async () => {
+    const repository = createRepositoryMock()
+    const service = createRecipeService(repository, {
+      addItemToShoppingList: vi.fn(),
+      findOrCreateItem: vi.fn(),
+    })
+    const lastAddedToMenuAt = new Date('2026-01-03T12:00:00.000Z')
+
+    repository.listRecipes.mockResolvedValue([
+      createRecipe({
+        lastAddedToMenuAt,
+        recipeItems: [createRecipeItem()],
+      }),
+    ])
+
+    await expect(service.listRecipes('household-1')).resolves.toMatchObject([
+      {
+        id: 'recipe-1',
+        lastAddedToMenuAt,
+      },
+    ])
   })
 
   it('adds recipe rows to the shopping list using the existing shopping list service', async () => {

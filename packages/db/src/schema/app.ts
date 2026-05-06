@@ -76,6 +76,7 @@ export const recipes = pgTable('recipes', {
   createdByUserId: text('created_by_user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
   householdId: text('household_id').notNull().references(() => households.id, { onDelete: 'cascade' }),
   id: text('id').primaryKey().$defaultFn(createId),
+  lastAddedToMenuAt: timestamp('last_added_to_menu_at', { mode: 'date', withTimezone: true }),
   name: text('name').notNull(),
   notes: text('notes'),
   updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true }).defaultNow().notNull(),

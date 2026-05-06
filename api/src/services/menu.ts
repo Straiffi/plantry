@@ -37,6 +37,7 @@ type MenuRepository = {
     recipeId: string
   }) => Promise<MenuItemRecord>
   listMenuItems: (householdId: string) => Promise<MenuItemWithRelations[]>
+  transaction: <T>(callback: (repository: MenuRepository) => Promise<T>) => Promise<T>
   updateMenuItem: (input: {
     checked?: boolean
     checkedAt?: Date | null
@@ -45,6 +46,12 @@ type MenuRepository = {
     menuItemId: string
     updatedAt: Date
   }) => Promise<MenuItemRecord | null>
+  updateRecipeLastAddedToMenuAt: (input: {
+    householdId: string
+    lastAddedToMenuAt: Date
+    recipeId: string
+    updatedAt: Date
+  }) => Promise<RecipeRecord | null>
 }
 
 type MenuDependencies = {
@@ -77,7 +84,7 @@ export class MenuServiceError extends Error {
   }
 }
 
-const mapRecipe = (recipe: RecipeWithRelations, lastAddedToMenuAt: Date | null): MenuRecipeView => {
+const mapRecipe = (recipe: RecipeWithRelations): MenuRecipeView => {
   return {
     ...recipe,
     items: [...recipe.recipeItems]
@@ -98,14 +105,14 @@ const mapRecipe = (recipe: RecipeWithRelations, lastAddedToMenuAt: Date | null):
           name: recipeItem.item.name,
         },
       })),
-    lastAddedToMenuAt,
+    lastAddedToMenuAt: recipe.lastAddedToMenuAt,
   }
 }
 
 const mapMenuItem = (menuItem: MenuItemWithRelations): MenuItemView => {
   return {
     ...menuItem,
-    recipe: mapRecipe(menuItem.recipe, menuItem.lastAddedAt),
+    recipe: mapRecipe(menuItem.recipe),
   }
 }
 
@@ -228,6 +235,11 @@ export const createMenuRepository = (database: DatabaseLike = db): MenuRepositor
         },
       })
     },
+    transaction: async (callback) => {
+      return database.transaction(async (transaction) => {
+        return callback(createMenuRepository(transaction as unknown as DatabaseLike))
+      })
+    },
     updateMenuItem: async ({ checked, checkedAt, householdId, lastAddedAt, menuItemId, updatedAt }) => {
       const [menuItemRecord] = await database
         .update(menuItems)
@@ -241,6 +253,18 @@ export const createMenuRepository = (database: DatabaseLike = db): MenuRepositor
         .returning()
 
       return menuItemRecord ?? null
+    },
+    updateRecipeLastAddedToMenuAt: async ({ householdId, lastAddedToMenuAt, recipeId, updatedAt }) => {
+      const [recipeRecord] = await database
+        .update(recipes)
+        .set({
+          lastAddedToMenuAt,
+          updatedAt,
+        })
+        .where(and(eq(recipes.householdId, householdId), eq(recipes.id, recipeId)))
+        .returning()
+
+      return recipeRecord ?? null
     },
   }
 }
@@ -260,49 +284,58 @@ export const createMenuService = (
   }
 
   const addRecipeToMenu = async (householdId: string, recipeId: string) => {
-    const recipeRecord = await repository.findRecipeById(householdId, recipeId)
+    return repository.transaction(async (transactionRepository) => {
+      const recipeRecord = await transactionRepository.findRecipeById(householdId, recipeId)
 
-    if (!recipeRecord) {
-      throw new MenuServiceError('RECIPE_NOT_FOUND', 'Recipe not found')
-    }
+      if (!recipeRecord) {
+        throw new MenuServiceError('RECIPE_NOT_FOUND', 'Recipe not found')
+      }
 
-    const existingMenuItem = await repository.findMenuItemByRecipeId(householdId, recipeId)
-    const updatedAt = new Date()
-    const lastAddedAt = new Date()
+      const existingMenuItem = await transactionRepository.findMenuItemByRecipeId(householdId, recipeId)
+      const updatedAt = new Date()
+      const lastAddedAt = new Date()
 
-    if (existingMenuItem) {
-      await repository.updateMenuItem({
+      await transactionRepository.updateRecipeLastAddedToMenuAt({
+        householdId,
+        lastAddedToMenuAt: lastAddedAt,
+        recipeId,
+        updatedAt,
+      })
+
+      if (existingMenuItem) {
+        await transactionRepository.updateMenuItem({
+          checked: false,
+          checkedAt: null,
+          householdId,
+          lastAddedAt,
+          menuItemId: existingMenuItem.id,
+          updatedAt,
+        })
+
+        const refreshedMenuItem = await transactionRepository.findMenuItemById(householdId, existingMenuItem.id)
+
+        if (!refreshedMenuItem) {
+          throw new MenuServiceError('MENU_ITEM_NOT_FOUND', 'Menu item not found')
+        }
+
+        return mapMenuItem(refreshedMenuItem)
+      }
+
+      const insertedMenuItem = await transactionRepository.insertMenuItem({
         checked: false,
         checkedAt: null,
         householdId,
         lastAddedAt,
-        menuItemId: existingMenuItem.id,
-        updatedAt,
+        recipeId,
       })
+      const createdMenuItem = await transactionRepository.findMenuItemById(householdId, insertedMenuItem.id)
 
-      const refreshedMenuItem = await repository.findMenuItemById(householdId, existingMenuItem.id)
-
-      if (!refreshedMenuItem) {
+      if (!createdMenuItem) {
         throw new MenuServiceError('MENU_ITEM_NOT_FOUND', 'Menu item not found')
       }
 
-      return mapMenuItem(refreshedMenuItem)
-    }
-
-    const insertedMenuItem = await repository.insertMenuItem({
-      checked: false,
-      checkedAt: null,
-      householdId,
-      lastAddedAt,
-      recipeId,
+      return mapMenuItem(createdMenuItem)
     })
-    const createdMenuItem = await repository.findMenuItemById(householdId, insertedMenuItem.id)
-
-    if (!createdMenuItem) {
-      throw new MenuServiceError('MENU_ITEM_NOT_FOUND', 'Menu item not found')
-    }
-
-    return mapMenuItem(createdMenuItem)
   }
 
   const toggleMenuItemChecked = async (householdId: string, menuItemId: string) => {

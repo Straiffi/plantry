@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm'
-import { db, itemCategories, items, menuItems, recipeItems, recipes } from '@recipe-app/db'
+import { db, itemCategories, items, recipeItems, recipes } from '@recipe-app/db'
 
 import { itemCatalogService } from './item-catalog.js'
 import { shoppingListService, type ShoppingListItemView } from './shopping-list.js'
@@ -17,7 +17,6 @@ type RecipeItemWithRelations = RecipeItemRecord & {
 }
 
 type RecipeWithRelations = RecipeRecord & {
-  menuItems: Array<typeof menuItems.$inferSelect>
   recipeItems: RecipeItemWithRelations[]
 }
 
@@ -142,7 +141,7 @@ const mapRecipe = (recipe: RecipeWithRelations): RecipeView => {
           name: recipeItem.item.name,
         },
       })),
-    lastAddedToMenuAt: recipe.menuItems[0]?.lastAddedAt ?? null,
+    lastAddedToMenuAt: recipe.lastAddedToMenuAt,
   }
 }
 
@@ -170,7 +169,6 @@ export const createRecipeRepository = (database: DatabaseLike = db): RecipeRepos
       const recipeRecord = await database.query.recipes.findFirst({
         where: and(eq(recipes.householdId, householdId), eq(recipes.id, recipeId)),
         with: {
-          menuItems: true,
           recipeItems: {
             with: {
               item: {
@@ -206,7 +204,6 @@ export const createRecipeRepository = (database: DatabaseLike = db): RecipeRepos
         orderBy: (table, operators) => [operators.asc(table.name)],
         where: eq(recipes.householdId, householdId),
         with: {
-          menuItems: true,
           recipeItems: {
             with: {
               item: {

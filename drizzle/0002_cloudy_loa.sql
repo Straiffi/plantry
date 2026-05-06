@@ -1,0 +1,1 @@
+ALTER TABLE "recipes" ADD COLUMN "last_added_to_menu_at" timestamp with time zone;
