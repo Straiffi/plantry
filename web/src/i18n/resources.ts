@@ -126,11 +126,7 @@ export const resources = {
       menu: {
         addAllToShoppingList: 'Add all to shopping list',
         addRecipeToShoppingList: 'Add recipe to shopping list',
-        cancel: 'Cancel',
         deleteChecked: 'Delete checked',
-        deleteCheckedConfirm: 'Delete checked menu rows',
-        deleteCheckedDescription: 'Checked menu rows stay visible until you clear them. This only removes checked menu rows, not the saved recipes.',
-        deleteCheckedTitle: 'Clear checked menu rows?',
         empty: 'The menu is empty. Add recipes from the recipes page to build your next meal plan.',
         genericError: 'We could not update the menu just now.',
         title: 'Menu',

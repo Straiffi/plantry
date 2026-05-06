@@ -10,11 +10,15 @@ import { PageHeader } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 
 type MenuQueryData = Awaited<ReturnType<typeof api.getMenu>>
 
 type ToggleMenuItemMutationContext = {
+  previousMenu?: MenuQueryData
+}
+
+type DeleteCheckedMenuMutationContext = {
+  previousExpandedMenuItemId: string | null
   previousMenu?: MenuQueryData
 }
 
@@ -56,6 +60,16 @@ const mergeMenuItemInCache = (menu: MenuQueryData | undefined, updatedItem: Menu
 
   return {
     items: menu.items.map((item) => item.id === updatedItem.id ? updatedItem : item),
+  }
+}
+
+const removeCheckedMenuItemsFromCache = (menu: MenuQueryData | undefined) => {
+  if (!menu) {
+    return menu
+  }
+
+  return {
+    items: menu.items.filter((item) => !item.checked),
   }
 }
 
@@ -112,7 +126,6 @@ const MenuRow = ({ isAddToShoppingListPending, isExpanded, item, isTogglePending
 
 export const MenuPage = () => {
   const { t } = useTranslation()
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const queryClient = useQueryClient()
   const [expandedMenuItemId, setExpandedMenuItemId] = useState<string | null>(null)
   const [pageError, setPageError] = useState<string | null>(null)
@@ -166,9 +179,24 @@ export const MenuPage = () => {
   const deleteCheckedMutation = useMutation({
     mutationKey: ['menu', 'delete-checked'],
     mutationFn: api.deleteCheckedMenuItems,
+    onError: (error, _variables, context: DeleteCheckedMenuMutationContext | undefined) => {
+      queryClient.setQueryData(['menu'], context?.previousMenu)
+      setExpandedMenuItemId(context?.previousExpandedMenuItemId ?? null)
+      handleMutationError(error)
+    },
+    onMutate: async () => {
+      setPageError(null)
+      await queryClient.cancelQueries({ queryKey: ['menu'] })
+
+      const previousExpandedMenuItemId = expandedMenuItemId
+      const previousMenu = queryClient.getQueryData<MenuQueryData>(['menu'])
+
+      queryClient.setQueryData<MenuQueryData>(['menu'], (currentMenu) => removeCheckedMenuItemsFromCache(currentMenu))
+      setExpandedMenuItemId((currentValue) => previousMenu?.items.some((item) => item.id === currentValue && item.checked) ? null : currentValue)
+
+      return { previousExpandedMenuItemId, previousMenu } satisfies DeleteCheckedMenuMutationContext
+    },
     onSuccess: () => {
-      setExpandedMenuItemId(null)
-      setIsDeleteDialogOpen(false)
       refreshMenuAndRecipes()
     },
   })
@@ -209,27 +237,9 @@ export const MenuPage = () => {
               {t('menu.addAllToShoppingList')}
             </Button>
 
-            <Dialog onOpenChange={setIsDeleteDialogOpen} open={isDeleteDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto" disabled={checkedCount === 0 || deleteCheckedMutation.isPending} variant="outline">
-                  {t('menu.deleteChecked')}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{t('menu.deleteCheckedTitle')}</DialogTitle>
-                  <DialogDescription>{t('menu.deleteCheckedDescription')}</DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button loading={deleteCheckedMutation.isPending} onClick={() => deleteCheckedMutation.mutate(undefined, { onError: handleMutationError })} type="button" variant="destructive">
-                    {t('menu.deleteCheckedConfirm')}
-                  </Button>
-                  <DialogClose asChild>
-                    <Button disabled={deleteCheckedMutation.isPending} type="button" variant="outline">{t('menu.cancel')}</Button>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button className="w-full sm:w-auto" disabled={checkedCount === 0 || deleteCheckedMutation.isPending} loading={deleteCheckedMutation.isPending} onClick={() => deleteCheckedMutation.mutate()} type="button" variant="outline">
+              {t('menu.deleteChecked')}
+            </Button>
           </div>
         }
         title={t('menu.title')}

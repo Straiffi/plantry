@@ -227,22 +227,50 @@ describe('MenuPage', () => {
     expect(apiMock.addUncheckedMenuToShoppingList).toHaveBeenCalled()
   })
 
-  it('deletes checked menu rows through the confirmation dialog', async () => {
+  it('deletes checked menu rows immediately from the header action', async () => {
     const user = userEvent.setup()
+    const deferredDelete = createDeferred<{ deletedCount: number }>()
 
+    apiMock.deleteCheckedMenuItems.mockImplementationOnce(() => deferredDelete.promise)
     apiMock.getMenu.mockResolvedValue({ items: [{ ...menuItem, checked: true, checkedAt: '2026-01-04T00:00:00.000Z' }] })
 
     renderWithProviders(<MenuPage />)
 
     await user.click(await screen.findByRole('button', { name: 'Delete checked' }))
-    await user.click(await screen.findByRole('button', { name: 'Delete checked menu rows' }))
+
+    expect(apiMock.deleteCheckedMenuItems).toHaveBeenCalled()
+    expect(screen.queryByText('Pasta')).not.toBeInTheDocument()
+    expect(screen.getByText('The menu is empty. Add recipes from the recipes page to build your next meal plan.')).toBeInTheDocument()
+
+    deferredDelete.resolve({ deletedCount: 1 })
+  })
+
+  it('keeps the delete button busy while deletion is pending', async () => {
+    const deferredDelete = createDeferred<{ deletedCount: number }>()
+    const user = userEvent.setup()
+
+    apiMock.deleteCheckedMenuItems.mockImplementationOnce(() => deferredDelete.promise)
+    apiMock.getMenu.mockResolvedValue({ items: [{ ...menuItem, checked: true, checkedAt: '2026-01-04T00:00:00.000Z' }] })
+
+    renderWithProviders(<MenuPage />)
+
+    const deleteButton = await screen.findByRole('button', { name: 'Delete checked' })
+
+    await user.click(deleteButton)
 
     await waitFor(() => {
-      expect(apiMock.deleteCheckedMenuItems).toHaveBeenCalled()
+      expect(screen.getByRole('button', { name: 'Delete checked' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Delete checked' })).toHaveAttribute('aria-busy', 'true')
+    })
+
+    deferredDelete.resolve({ deletedCount: 1 })
+
+    await waitFor(() => {
+      expect(screen.getByText('The menu is empty. Add recipes from the recipes page to build your next meal plan.')).toBeInTheDocument()
     })
   })
 
-  it('keeps the delete dialog open while deletion is pending', async () => {
+  it('rolls checked menu rows back when deletion fails', async () => {
     const deferredDelete = createDeferred<{ deletedCount: number }>()
     const user = userEvent.setup()
 
@@ -252,18 +280,14 @@ describe('MenuPage', () => {
     renderWithProviders(<MenuPage />)
 
     await user.click(await screen.findByRole('button', { name: 'Delete checked' }))
-    await user.click(await screen.findByRole('button', { name: 'Delete checked menu rows' }))
+
+    expect(screen.queryByText('Pasta')).not.toBeInTheDocument()
+
+    deferredDelete.reject(new Error('Request failed'))
 
     await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Delete checked menu rows' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'Delete checked menu rows' })).toHaveAttribute('aria-busy', 'true')
-    })
-
-    deferredDelete.resolve({ deletedCount: 1 })
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.getByText('Pasta')).toBeInTheDocument()
+      expect(screen.getByText('We could not update the menu just now.')).toBeInTheDocument()
     })
   })
 })
